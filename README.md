@@ -5,6 +5,31 @@ Evaluador de riesgo DeFi en Avalanche. Agente inteligente diseñado para ser **d
 - Skill `erc8004-avalanche` de `Colombia-Blockchain/agent-skills`
 - Facilitador x402 de UltraVioleta DAO (`https://facilitator.ultravioletadao.xyz`)
 
+## ✨ Funcionalidades Principales
+
+🔍 **Análisis de Riesgo DeFi:**
+- Análisis de tokens ERC-20 (supply, holders, concentración)
+- Evaluación de pools de liquidez (Trader Joe, Pangolin, Uniswap)
+- Análisis de contratos inteligentes (bytecode, seguridad)
+- Análisis de protocolos DeFi (TVL, auditorías)
+
+🤖 **IA con Claude:**
+- Análisis inteligente con Anthropic Claude Sonnet 4.5
+- Evaluación automática de riesgos de seguridad
+- Recomendaciones en lenguaje natural
+
+💎 **Características ERC-8004:**
+- Registrado en Avalanche Fuji testnet
+- Descubrible por scanners ERC-8004
+- Comunicación A2A (Agent-to-Agent)
+- Micropagos x402 integrados
+
+📊 **Endpoints:**
+- `GET /` - Health check
+- `GET /registration.json` - Metadatos ERC-8004
+- `GET /.well-known/agent-card.json` - Tarjeta A2A
+- `POST /a2a/research` - Análisis de riesgo (x402 protegido)
+
 ---
 
 ## 1. Configuración de entorno
