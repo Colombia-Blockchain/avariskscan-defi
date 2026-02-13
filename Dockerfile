@@ -8,6 +8,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 COPY registration.json ./
+COPY dashboard.html ./
 
 RUN npm run build
 
