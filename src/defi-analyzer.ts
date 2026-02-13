@@ -3,8 +3,8 @@ import { ethers } from "ethers";
 
 // Configuración
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
-const RPC_URL =
-  process.env.AVALANCHE_RPC_URL || "https://api.avax.network/ext/bc/C/rpc";
+const RPC_URL_MAINNET = "https://api.avax.network/ext/bc/C/rpc";
+const RPC_URL_FUJI = "https://api.avax-test.network/ext/bc/C/rpc";
 
 // ABIs simplificados para análisis
 const ERC20_ABI = [
@@ -40,13 +40,19 @@ export interface RiskAnalysisResult {
 
 export class DeFiRiskAnalyzer {
   private anthropic: Anthropic | null = null;
-  private provider: ethers.JsonRpcProvider;
+  private providerMainnet: ethers.JsonRpcProvider;
+  private providerFuji: ethers.JsonRpcProvider;
 
   constructor() {
-    this.provider = new ethers.JsonRpcProvider(RPC_URL);
+    this.providerMainnet = new ethers.JsonRpcProvider(RPC_URL_MAINNET);
+    this.providerFuji = new ethers.JsonRpcProvider(RPC_URL_FUJI);
     if (ANTHROPIC_API_KEY) {
       this.anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
     }
+  }
+
+  private getProvider(network: "mainnet" | "fuji" = "mainnet"): ethers.JsonRpcProvider {
+    return network === "fuji" ? this.providerFuji : this.providerMainnet;
   }
 
   /**
@@ -54,13 +60,14 @@ export class DeFiRiskAnalyzer {
    */
   async analyzeRisk(request: RiskAnalysisRequest): Promise<RiskAnalysisResult> {
     try {
+      const network = request.network || "mainnet";
       switch (request.type) {
         case "token":
-          return await this.analyzeToken(request.address);
+          return await this.analyzeToken(request.address, network);
         case "pool":
-          return await this.analyzePool(request.address, request.dex);
+          return await this.analyzePool(request.address, request.dex, network);
         case "contract":
-          return await this.analyzeContract(request.address);
+          return await this.analyzeContract(request.address, network);
         case "protocol":
           return await this.analyzeProtocol(request.address);
         default:
@@ -81,31 +88,74 @@ export class DeFiRiskAnalyzer {
   /**
    * Análisis de token ERC-20
    */
-  private async analyzeToken(address: string): Promise<RiskAnalysisResult> {
+  private async analyzeToken(address: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
     let riskScore = 0;
 
     try {
-      const contract = new ethers.Contract(address, ERC20_ABI, this.provider);
+      const provider = this.getProvider(network);
 
-      // Información básica del token
-      const [name, symbol, decimals, totalSupply] = await Promise.all([
-        contract.name(),
-        contract.symbol(),
-        contract.decimals(),
-        contract.totalSupply(),
-      ]);
+      // Verificar código del contrato PRIMERO
+      const code = await provider.getCode(address);
+      const networkInfo = await provider.getNetwork();
+      findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
+
+      if (code === "0x") {
+        findings.push("⚠️ CRÍTICO: No hay código en esta dirección (es una EOA, no un contrato)");
+        findings.push("💡 Verifica que estés usando la red correcta (mainnet vs fuji)");
+        findings.push("💡 Si es mainnet, usa: network=mainnet o déjalo vacío");
+        findings.push("💡 Si es testnet, usa: network=fuji");
+        return this.buildResult(100, findings);
+      }
+
+      const contract = new ethers.Contract(address, ERC20_ABI, provider);
+
+      // Información básica del token (con manejo individual de errores)
+      let name = "Unknown";
+      let symbol = "Unknown";
+      let decimals = 18;
+      let totalSupply = BigInt(0);
+
+      try {
+        name = await contract.name();
+      } catch (e) {
+        findings.push("⚠️ No se pudo obtener name() - puede no ser ERC-20");
+        riskScore += 20;
+      }
+
+      try {
+        symbol = await contract.symbol();
+      } catch (e) {
+        findings.push("⚠️ No se pudo obtener symbol() - puede no ser ERC-20");
+        riskScore += 20;
+      }
+
+      try {
+        decimals = await contract.decimals();
+      } catch (e) {
+        findings.push("⚠️ No se pudo obtener decimals() - puede no ser ERC-20");
+        riskScore += 20;
+      }
+
+      try {
+        totalSupply = await contract.totalSupply();
+      } catch (e) {
+        findings.push("⚠️ No se pudo obtener totalSupply() - puede no ser ERC-20");
+        riskScore += 20;
+      }
+
+      // Si no se pudo obtener información básica, no es ERC-20 válido
+      if (name === "Unknown" && symbol === "Unknown") {
+        findings.push("⚠️ CRÍTICO: El contrato no implementa interfaz ERC-20");
+        findings.push("💡 Este contrato existe pero no responde a las funciones estándar de tokens");
+        return this.buildResult(100, findings);
+      }
 
       findings.push(`Token: ${name} (${symbol})`);
       findings.push(`Decimales: ${decimals}`);
       findings.push(`Supply total: ${ethers.formatUnits(totalSupply, decimals)}`);
 
-      // Verificar código del contrato
-      const code = await this.provider.getCode(address);
-      if (code === "0x") {
-        findings.push("⚠️ CRÍTICO: No hay código en esta dirección");
-        riskScore += 50;
-      }
+      findings.push("✓ Contrato desplegado y verificado");
 
       // Análisis de concentración (top holder)
       const topHolders = await this.getTopHolders(address);
@@ -143,12 +193,16 @@ export class DeFiRiskAnalyzer {
   /**
    * Análisis de pool de liquidez (Uniswap V2 style)
    */
-  private async analyzePool(address: string, dex?: string): Promise<RiskAnalysisResult> {
+  private async analyzePool(address: string, dex?: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
     let riskScore = 0;
 
     try {
-      const pair = new ethers.Contract(address, PAIR_ABI, this.provider);
+      const provider = this.getProvider(network);
+      const networkInfo = await provider.getNetwork();
+      findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
+
+      const pair = new ethers.Contract(address, PAIR_ABI, provider);
 
       // Obtener tokens del pool
       const [token0Addr, token1Addr, reserves, totalSupply] = await Promise.all([
@@ -163,8 +217,8 @@ export class DeFiRiskAnalyzer {
       findings.push(`Token1: ${token1Addr}`);
 
       // Información de los tokens
-      const token0 = new ethers.Contract(token0Addr, ERC20_ABI, this.provider);
-      const token1 = new ethers.Contract(token1Addr, ERC20_ABI, this.provider);
+      const token0 = new ethers.Contract(token0Addr, ERC20_ABI, provider);
+      const token1 = new ethers.Contract(token1Addr, ERC20_ABI, provider);
 
       const [symbol0, symbol1, decimals0, decimals1] = await Promise.all([
         token0.symbol(),
@@ -226,15 +280,20 @@ export class DeFiRiskAnalyzer {
   /**
    * Análisis de contrato inteligente
    */
-  private async analyzeContract(address: string): Promise<RiskAnalysisResult> {
+  private async analyzeContract(address: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
     let riskScore = 0;
 
     try {
+      const provider = this.getProvider(network);
+      const networkInfo = await provider.getNetwork();
+      findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
+
       // Verificar que existe código
-      const code = await this.provider.getCode(address);
+      const code = await provider.getCode(address);
       if (code === "0x") {
         findings.push("⚠️ CRÍTICO: No hay código en esta dirección (EOA o contrato vacío)");
+        findings.push("💡 Verifica que estés usando la red correcta (mainnet vs fuji)");
         return this.buildResult(100, findings);
       }
 

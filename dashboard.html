@@ -658,9 +658,9 @@
     </div>
 
     <script>
-        // Use localhost for local development
+        // Use localhost for local development (detect port automatically)
         const API_URL = window.location.hostname === 'localhost'
-            ? 'http://localhost:8080'
+            ? `http://localhost:${window.location.port || 3000}`
             : 'https://avariskscan-defi-production.up.railway.app';
 
         // Load initial data
