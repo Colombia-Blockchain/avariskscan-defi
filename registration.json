@@ -6,16 +6,16 @@
   "services": [
     {
       "name": "web",
-      "endpoint": "https://TU_DOMINIO/"
+      "endpoint": "https://avariskscan-defi-production.up.railway.app/"
     },
     {
       "name": "A2A",
-      "endpoint": "https://TU_DOMINIO/.well-known/agent-card.json",
+      "endpoint": "https://avariskscan-defi-production.up.railway.app/.well-known/agent-card.json",
       "version": "0.3.0"
     },
     {
       "name": "MCP",
-      "endpoint": "https://mcp.TU_DOMINIO/",
+      "endpoint": "https://mcp.avariskscan-defi-production.up.railway.app/",
       "version": "2025-06-18"
     }
   ],
