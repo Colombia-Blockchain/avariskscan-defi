@@ -71,27 +71,41 @@ app.get("/agents/discover", async (c) => {
 
 // Info de x402 y faucet
 app.get("/x402/info", async (c) => {
-  const privateKey = process.env.PRIVATE_KEY || "";
-  if (!privateKey) {
-    return c.json({ error: "PRIVATE_KEY no configurada" }, 500);
+  try {
+    // Check facilitator without requiring private key
+    const facilitatorResponse = await fetch("https://facilitator.ultravioletadao.xyz");
+    const facilitatorHealthy = facilitatorResponse.ok;
+
+    return c.json({
+      facilitator: {
+        url: "https://facilitator.ultravioletadao.xyz",
+        healthy: facilitatorHealthy,
+      },
+      usdc: {
+        contract: "0x5425890298aed601595a70AB815c96711a31Bc65",
+        network: "Avalanche Fuji Testnet",
+        chainId: 43113,
+        faucet: "https://faucet.circle.com/",
+      },
+      payment: {
+        method: "EIP-712 TransferWithAuthorization",
+        offChain: true,
+        description: "El agente firma off-chain, el facilitador ejecuta el pago",
+      },
+      agent: {
+        wallet: WALLET_ADDRESS,
+        registered: true,
+        registry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      },
+    });
+  } catch (error) {
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Error al obtener info x402",
+      },
+      500
+    );
   }
-
-  const client = new X402Client(privateKey);
-  const faucetInfo = client.getFaucetInfo();
-  const facilitatorHealthy = await client.checkFacilitator();
-
-  return c.json({
-    facilitator: {
-      url: "https://facilitator.ultravioletadao.xyz",
-      healthy: facilitatorHealthy,
-    },
-    usdc: faucetInfo,
-    payment: {
-      method: "EIP-712 TransferWithAuthorization",
-      offChain: true,
-      description: "El agente firma off-chain, el facilitador ejecuta el pago",
-    },
-  });
 });
 
 // Rutas protegidas con x402 (UltraVioleta facilitator)
