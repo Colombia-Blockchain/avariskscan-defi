@@ -301,18 +301,72 @@ export class DeFiRiskAnalyzer {
 
       // Analizar tamaño del bytecode
       const codeSize = (code.length - 2) / 2; // bytes
-      findings.push(`Tamaño del bytecode: ${codeSize} bytes`);
+      findings.push(`📏 Tamaño del bytecode: ${codeSize.toLocaleString()} bytes`);
 
       if (codeSize < 100) {
-        findings.push("⚠️ Contrato muy pequeño (posible proxy o scam)");
-        riskScore += 25;
+        findings.push("⚠️ ALTO RIESGO: Contrato muy pequeño (posible proxy malicioso o honeypot)");
+        riskScore += 30;
+      } else if (codeSize > 24576) {
+        findings.push("⚠️ Contrato muy grande (>24KB límite de Ethereum, podría ser proxy)");
+        riskScore += 10;
+      }
+
+      // Obtener balance del contrato
+      const balance = await provider.getBalance(address);
+      const balanceAVAX = ethers.formatEther(balance);
+      findings.push(`💰 Balance del contrato: ${parseFloat(balanceAVAX).toFixed(4)} AVAX`);
+
+      if (Number(balanceAVAX) > 1000) {
+        findings.push("📊 Alto balance bloqueado en el contrato (>1000 AVAX)");
+      }
+
+      // Detección de patrones de proxy (ERC-1967, EIP-1167)
+      const isProxy = this.detectProxyPattern(code);
+      if (isProxy.detected) {
+        findings.push(`🔄 Contrato Proxy detectado: ${isProxy.type}`);
+        findings.push("⚠️ IMPORTANTE: El contrato es upgradeable, verificar quién controla las actualizaciones");
+        riskScore += 20;
+      }
+
+      // Detección de funciones peligrosas
+      const dangerousFunctions = this.detectDangerousFunctions(code);
+      if (dangerousFunctions.length > 0) {
+        findings.push(`⚠️ Funciones potencialmente peligrosas detectadas: ${dangerousFunctions.join(", ")}`);
+        riskScore += dangerousFunctions.length * 10;
+      }
+
+      // Análisis de patrones comunes
+      const patterns = this.detectCommonPatterns(code);
+      if (patterns.length > 0) {
+        findings.push(`🔍 Patrones detectados: ${patterns.join(", ")}`);
+      }
+
+      // Verificar transacciones del contrato
+      try {
+        const txCount = await provider.getTransactionCount(address);
+        findings.push(`📈 Transacciones enviadas por el contrato: ${txCount}`);
+
+        if (txCount === 0 && Number(balanceAVAX) > 10) {
+          findings.push("⚠️ Contrato con balance alto pero sin transacciones enviadas (sospechoso)");
+          riskScore += 15;
+        }
+      } catch (error) {
+        // Ignore tx count error
       }
 
       // Análisis con IA del bytecode
       if (this.anthropic && codeSize < 10000) {
         const aiAnalysis = await this.analyzeWithAI({
           type: "contract",
-          data: { address, codeSize, bytecode: code.substring(0, 1000) },
+          data: {
+            address,
+            codeSize,
+            balance: balanceAVAX,
+            isProxy: isProxy.detected,
+            dangerousFunctions,
+            patterns,
+            bytecode: code.substring(0, 1000)
+          },
           findings,
         });
         return this.buildResult(riskScore, findings, aiAnalysis);
@@ -323,6 +377,86 @@ export class DeFiRiskAnalyzer {
       findings.push(`Error al analizar contrato: ${error instanceof Error ? error.message : "Unknown"}`);
       return this.buildResult(100, findings);
     }
+  }
+
+  /**
+   * Detecta patrones de proxy en el bytecode
+   */
+  private detectProxyPattern(bytecode: string): { detected: boolean; type: string } {
+    // ERC-1967 (Transparent/UUPS Proxy) - slot: 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
+    if (bytecode.includes("360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")) {
+      return { detected: true, type: "ERC-1967 (UUPS/Transparent Proxy)" };
+    }
+
+    // EIP-1167 (Minimal Proxy / Clone)
+    if (bytecode.includes("363d3d373d3d3d363d73") || bytecode.includes("5af43d82803e903d91602b57fd5bf3")) {
+      return { detected: true, type: "EIP-1167 (Minimal Proxy/Clone)" };
+    }
+
+    // Beacon Proxy - slot: 0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50
+    if (bytecode.includes("a3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50")) {
+      return { detected: true, type: "Beacon Proxy" };
+    }
+
+    // Delegatecall pattern (proxy común)
+    if (bytecode.includes("delegatecall") || bytecode.match(/5b[0-9a-f]{2}f4/)) {
+      return { detected: true, type: "Custom Proxy (delegatecall detectado)" };
+    }
+
+    return { detected: false, type: "" };
+  }
+
+  /**
+   * Detecta funciones potencialmente peligrosas
+   */
+  private detectDangerousFunctions(bytecode: string): string[] {
+    const dangerous: string[] = [];
+
+    // selfdestruct (opcode: ff)
+    if (bytecode.match(/ff$/m) || bytecode.includes("selfdestruct")) {
+      dangerous.push("selfdestruct");
+    }
+
+    // delegatecall (opcode: f4)
+    if (bytecode.includes("f4") && bytecode.length > 1000) {
+      dangerous.push("delegatecall");
+    }
+
+    // callcode (deprecated, opcode: f2)
+    if (bytecode.includes("f2")) {
+      dangerous.push("callcode (deprecated)");
+    }
+
+    return dangerous;
+  }
+
+  /**
+   * Detecta patrones comunes de contratos
+   */
+  private detectCommonPatterns(bytecode: string): string[] {
+    const patterns: string[] = [];
+
+    // ERC-20 (transfer signature: a9059cbb)
+    if (bytecode.includes("a9059cbb")) {
+      patterns.push("ERC-20");
+    }
+
+    // ERC-721 (transferFrom signature: 23b872dd)
+    if (bytecode.includes("23b872dd") && bytecode.includes("6352211e")) {
+      patterns.push("ERC-721");
+    }
+
+    // Ownable (owner storage pattern)
+    if (bytecode.includes("8da5cb5b")) {
+      patterns.push("Ownable");
+    }
+
+    // Pausable
+    if (bytecode.includes("5c975abb")) {
+      patterns.push("Pausable");
+    }
+
+    return patterns;
   }
 
   /**
