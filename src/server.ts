@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { paymentMiddleware } from "x402-hono";
 import { DeFiRiskAnalyzer } from "./defi-analyzer.js";
+import { X402Client, discoverAgents } from "./x402-client.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const registration = JSON.parse(
@@ -43,6 +44,56 @@ app.get("/registration.json", (c) => {
   });
 });
 
+// Endpoint para descubrir otros agentes (público)
+app.get("/agents/discover", async (c) => {
+  try {
+    const registryAddress = "0x8004A818BFB912233c491871b3d84c89A494BD9e"; // Fuji
+    const agents = await discoverAgents(registryAddress);
+
+    return c.json({
+      success: true,
+      registry: registryAddress,
+      network: "avalanche-fuji",
+      agents: agents.length,
+      agentsList: agents,
+      info: "Descubriendo agentes registrados en ERC-8004",
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error desconocido",
+      },
+      500
+    );
+  }
+});
+
+// Info de x402 y faucet
+app.get("/x402/info", async (c) => {
+  const privateKey = process.env.PRIVATE_KEY || "";
+  if (!privateKey) {
+    return c.json({ error: "PRIVATE_KEY no configurada" }, 500);
+  }
+
+  const client = new X402Client(privateKey);
+  const faucetInfo = client.getFaucetInfo();
+  const facilitatorHealthy = await client.checkFacilitator();
+
+  return c.json({
+    facilitator: {
+      url: "https://facilitator.ultravioletadao.xyz",
+      healthy: facilitatorHealthy,
+    },
+    usdc: faucetInfo,
+    payment: {
+      method: "EIP-712 TransferWithAuthorization",
+      offChain: true,
+      description: "El agente firma off-chain, el facilitador ejecuta el pago",
+    },
+  });
+});
+
 // Rutas protegidas con x402 (UltraVioleta facilitator)
 app.use(
   paymentMiddleware(
@@ -50,7 +101,7 @@ app.use(
     {
       "/a2a/research": {
         price: "$0.01",
-        network: "base-sepolia",
+        network: "avalanche-fuji", // Fuji testnet
         config: {
           description: "Evaluación de riesgo DeFi en Avalanche",
         },
@@ -110,7 +161,10 @@ const port = Number(process.env.PORT) || 3000;
 
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`ERC-8004 agent listening at http://localhost:${info.port}`);
-  console.log(`  GET  /                        - Health check`);
+  console.log(`  GET  /                            - Health check`);
   console.log(`  GET  /.well-known/agent-card.json - A2A metadata`);
-  console.log(`  POST /a2a/research            - Research (x402 protected)`);
+  console.log(`  GET  /registration.json           - ERC-8004 registration`);
+  console.log(`  GET  /agents/discover             - Discover other agents`);
+  console.log(`  GET  /x402/info                   - x402 payment info`);
+  console.log(`  POST /a2a/research                - Research (x402 protected)`);
 });
