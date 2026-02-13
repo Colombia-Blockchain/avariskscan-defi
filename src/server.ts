@@ -3,9 +3,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { cors } from "hono/cors";
 import { paymentMiddleware } from "x402-hono";
 import { DeFiRiskAnalyzer } from "./defi-analyzer.js";
 import { discoverAgents } from "./x402-client.js";
+import { DeFiAPIs, formatTVL } from "./defi-apis.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const registration = JSON.parse(
@@ -14,11 +16,15 @@ const registration = JSON.parse(
 
 const app = new Hono();
 
+// Enable CORS for dashboard
+app.use("/*", cors());
+
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "0x29a45b03F07D1207f2e3ca34c38e7BE5458CE71a";
 const FACILITATOR_URL = "https://facilitator.ultravioletadao.xyz";
 
-// Inicializar analizador DeFi
+// Inicializar analizadores
 const analyzer = new DeFiRiskAnalyzer();
+const defiAPIs = new DeFiAPIs();
 
 // Health check
 app.get("/", (c) => {
@@ -108,6 +114,78 @@ app.get("/x402/info", async (c) => {
   }
 });
 
+// Métricas generales de Avalanche DeFi
+app.get("/defi/avalanche", async (c) => {
+  try {
+    const metrics = await defiAPIs.getAvalancheMetrics();
+    return c.json({
+      success: true,
+      network: "Avalanche",
+      metrics: {
+        ...metrics,
+        totalTVL: formatTVL(metrics.totalTVL),
+        topProtocols: metrics.topProtocols.map((p: any) => ({
+          ...p,
+          tvl: formatTVL(p.tvl),
+        })),
+      },
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error fetching metrics",
+      },
+      500
+    );
+  }
+});
+
+// Análisis profundo de token con APIs externas
+app.get("/defi/token/:address", async (c) => {
+  try {
+    const address = c.req.param("address");
+    const network = (c.req.query("network") || "mainnet") as "mainnet" | "fuji";
+
+    const analysis = await defiAPIs.analyzeTokenDeep(address, network);
+
+    return c.json({
+      success: true,
+      analysis,
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error analyzing token",
+      },
+      500
+    );
+  }
+});
+
+// Análisis de protocolo DeFi
+app.get("/defi/protocol/:name", async (c) => {
+  try {
+    const protocolName = c.req.param("name");
+    const analysis = await defiAPIs.analyzeProtocol(protocolName);
+
+    return c.json({
+      success: analysis.found,
+      protocol: protocolName,
+      analysis,
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error analyzing protocol",
+      },
+      500
+    );
+  }
+});
+
 // Rutas protegidas con x402 (UltraVioleta facilitator)
 app.use(
   paymentMiddleware(
@@ -180,5 +258,8 @@ serve({ fetch: app.fetch, port }, (info) => {
   console.log(`  GET  /registration.json           - ERC-8004 registration`);
   console.log(`  GET  /agents/discover             - Discover other agents`);
   console.log(`  GET  /x402/info                   - x402 payment info`);
+  console.log(`  GET  /defi/avalanche              - Avalanche DeFi metrics`);
+  console.log(`  GET  /defi/token/:address         - Deep token analysis`);
+  console.log(`  GET  /defi/protocol/:name         - Protocol analysis`);
   console.log(`  POST /a2a/research                - Research (x402 protected)`);
 });
