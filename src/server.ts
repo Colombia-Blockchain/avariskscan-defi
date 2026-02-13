@@ -50,6 +50,16 @@ app.get("/registration.json", (c) => {
   });
 });
 
+// Dashboard HTML
+app.get("/dashboard", (c) => {
+  try {
+    const dashboardHTML = readFileSync(join(__dirname, "..", "dashboard.html"), "utf-8");
+    return c.html(dashboardHTML);
+  } catch (error) {
+    return c.json({ error: "Dashboard not found" }, 404);
+  }
+});
+
 // Endpoint para descubrir otros agentes (público)
 app.get("/agents/discover", async (c) => {
   try {
@@ -254,6 +264,7 @@ const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`ERC-8004 agent listening at http://localhost:${info.port}`);
   console.log(`  GET  /                            - Health check`);
+  console.log(`  GET  /dashboard                   - Web Dashboard`);
   console.log(`  GET  /.well-known/agent-card.json - A2A metadata`);
   console.log(`  GET  /registration.json           - ERC-8004 registration`);
   console.log(`  GET  /agents/discover             - Discover other agents`);
