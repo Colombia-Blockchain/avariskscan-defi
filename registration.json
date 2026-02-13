@@ -1,0 +1,31 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "AvaRisk DeFi",
+  "description": "Evaluador de riesgo DeFi en Avalanche. Agente inteligente que analiza contratos, tokens y protocolos para identificar riesgos. Registrado vía ERC-8004, soporta x402.",
+  "image": "https://example.com/avatar.png",
+  "services": [
+    {
+      "name": "web",
+      "endpoint": "https://TU_DOMINIO/"
+    },
+    {
+      "name": "A2A",
+      "endpoint": "https://TU_DOMINIO/.well-known/agent-card.json",
+      "version": "0.3.0"
+    },
+    {
+      "name": "MCP",
+      "endpoint": "https://mcp.TU_DOMINIO/",
+      "version": "2025-06-18"
+    }
+  ],
+  "x402Support": true,
+  "active": true,
+  "registrations": [
+    {
+      "agentId": 0,
+      "agentRegistry": "eip155:43113:0x8004A818BFB912233c491871b3d84c89A494BD9e"
+    }
+  ],
+  "supportedTrust": ["reputation"]
+}
