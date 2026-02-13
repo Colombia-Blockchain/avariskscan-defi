@@ -259,6 +259,51 @@ app.post("/a2a/research", async (c) => {
   }
 });
 
+// Endpoint público de análisis (sin x402) - Para el dashboard y testing
+app.post("/defi/analyze", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { type, address, network, dex } = body;
+
+    // Validar entrada
+    if (!type || !address) {
+      return c.json(
+        {
+          success: false,
+          error: "Campos requeridos: type (token|pool|contract|protocol) y address",
+        },
+        400
+      );
+    }
+
+    // Realizar análisis de riesgo
+    const result = await analyzer.analyzeRisk({
+      type,
+      address,
+      network: network || "mainnet",
+      dex,
+    });
+
+    return c.json({
+      success: true,
+      agent: "AvaRisk DeFi",
+      timestamp: new Date().toISOString(),
+      request: { type, address, network, dex },
+      result,
+      note: "Endpoint público - Para comunicación A2A con pago use /a2a/research",
+    });
+  } catch (error) {
+    console.error("Error en /defi/analyze:", error);
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error desconocido",
+      },
+      500
+    );
+  }
+});
+
 const port = Number(process.env.PORT) || 3000;
 
 serve({ fetch: app.fetch, port }, (info) => {
@@ -272,5 +317,6 @@ serve({ fetch: app.fetch, port }, (info) => {
   console.log(`  GET  /defi/avalanche              - Avalanche DeFi metrics`);
   console.log(`  GET  /defi/token/:address         - Deep token analysis`);
   console.log(`  GET  /defi/protocol/:name         - Protocol analysis`);
+  console.log(`  POST /defi/analyze                - Public risk analysis (no payment)`);
   console.log(`  POST /a2a/research                - Research (x402 protected)`);
 });
