@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { paymentMiddleware } from "x402-hono";
 import { DeFiRiskAnalyzer } from "./defi-analyzer.js";
-import { X402Client, discoverAgents } from "./x402-client.js";
+import { discoverAgents } from "./x402-client.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const registration = JSON.parse(
