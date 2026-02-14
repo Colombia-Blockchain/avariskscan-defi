@@ -589,7 +589,6 @@
                     <div class="market-tab active" onclick="switchMarketTab(this,'defi')">DeFi Protocols</div>
                     <div class="market-tab" onclick="switchMarketTab(this,'l1s')">Avalanche L1s</div>
                     <div class="market-tab" onclick="switchMarketTab(this,'trading')">Trading Pairs</div>
-                    <div class="market-tab" onclick="switchMarketTab(this,'lookup')">Token Lookup</div>
                     <div class="market-tab" onclick="switchMarketTab(this,'agents')">ERC-8004 Agents</div>
                 </div>
 
@@ -636,17 +635,6 @@
                     </div>
                 </div>
 
-                <!-- Token Lookup Section -->
-                <div class="market-section" id="mktLookup">
-                    <div class="market-card">
-                        <h3>Token Lookup</h3>
-                        <div class="token-search-box">
-                            <input type="text" id="tokenAddressInput" placeholder="Enter token address (0x...)" />
-                            <button onclick="searchToken()">Search</button>
-                        </div>
-                        <div id="tokenResult"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -884,33 +872,6 @@
             // Scanner is embedded as iframe - no additional loading needed
         }
 
-        async function searchToken() {
-            const addr = document.getElementById('tokenAddressInput').value.trim();
-            const resultDiv = document.getElementById('tokenResult');
-            if (!addr) { resultDiv.innerHTML = '<span class="loading-small">Enter a token address</span>'; return; }
-
-            resultDiv.innerHTML = '<span class="loading-small">Searching...</span>';
-            try {
-                const res = await fetch(API_BASE + '/api/token/' + encodeURIComponent(addr));
-                const data = await res.json();
-                if (data.success && data.dex) {
-                    const d = data.dex;
-                    resultDiv.innerHTML =
-                        '<div class="token-result">' +
-                            '<div><span class="label">Token</span> <span class="value">' + d.name + ' (' + d.symbol + ')</span></div>' +
-                            '<div><span class="label">Price</span> <span class="value">$' + parseFloat(d.priceUsd).toFixed(6) + '</span></div>' +
-                            '<div><span class="label">24h Volume</span> <span class="value">$' + (d.volume24h ? d.volume24h.toLocaleString() : 'N/A') + '</span></div>' +
-                            '<div><span class="label">Liquidity</span> <span class="value">$' + (d.liquidity ? d.liquidity.toLocaleString() : 'N/A') + '</span></div>' +
-                            '<div><span class="label">DEX</span> <span class="value">' + d.dexId + '</span></div>' +
-                            '<div><span class="label">Pairs</span> <span class="value">' + data.pairsCount + '</span></div>' +
-                        '</div>';
-                } else {
-                    resultDiv.innerHTML = '<div class="token-result"><span class="loading-small">No DEX data found for this token on Avalanche</span></div>';
-                }
-            } catch (e) {
-                resultDiv.innerHTML = '<div class="token-result"><span class="loading-small">Error fetching token data</span></div>';
-            }
-        }
 
         // Load sidebar data on start + refresh every 2 min
         loadSidebarData();
