@@ -15,7 +15,7 @@
     },
     {
       "name": "MCP",
-      "endpoint": "https://mcp.avariskscan-defi-production.up.railway.app/",
+      "endpoint": "https://avariskscan-defi-production.up.railway.app/mcp",
       "version": "2025-06-18"
     }
   ],

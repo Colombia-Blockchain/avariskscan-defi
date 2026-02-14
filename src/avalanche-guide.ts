@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 // ---------- Types ----------
 
@@ -349,7 +350,8 @@ export class AvalancheGuide {
   private knowledgeCache = new Map<string, string>();
 
   constructor(knowledgeBasePath?: string) {
-    this.knowledgeBasePath = knowledgeBasePath || "/Users/jquiceva/avalanche-skill";
+    const defaultPath = join(dirname(fileURLToPath(import.meta.url)), "..", "avalanche-skill");
+    this.knowledgeBasePath = knowledgeBasePath || process.env.KNOWLEDGE_BASE_PATH || defaultPath;
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (apiKey) {
