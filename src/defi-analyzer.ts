@@ -1,12 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ethers } from "ethers";
 
-// Configuración
+// Configuracion (usa env vars con fallback)
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
-const RPC_URL_MAINNET = "https://api.avax.network/ext/bc/C/rpc";
-const RPC_URL_FUJI = "https://api.avax-test.network/ext/bc/C/rpc";
+const RPC_URL_MAINNET = process.env.RPC_URL_MAINNET || "https://api.avax.network/ext/bc/C/rpc";
+const RPC_URL_FUJI = process.env.RPC_URL_FUJI || "https://api.avax-test.network/ext/bc/C/rpc";
 
-// ABIs simplificados para análisis
+// ABIs simplificados para analisis
 const ERC20_ABI = [
   "function name() view returns (string)",
   "function symbol() view returns (string)",
@@ -43,7 +43,18 @@ export interface RiskAnalysisResult {
   findings: string[];
   recommendations: string[];
   analysis: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+interface AIAnalysisContext {
+  type: string;
+  data: Record<string, unknown>;
+  findings: string[];
+}
+
+interface PoolReserves {
+  reserve0: bigint;
+  reserve1: bigint;
 }
 
 export class DeFiRiskAnalyzer {
@@ -63,8 +74,12 @@ export class DeFiRiskAnalyzer {
     return network === "fuji" ? this.providerFuji : this.providerMainnet;
   }
 
+  private getNetworkLabel(network: "mainnet" | "fuji"): string {
+    return network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet";
+  }
+
   /**
-   * Análisis principal de riesgo DeFi
+   * Analisis principal de riesgo DeFi
    */
   async analyzeRisk(request: RiskAnalysisRequest): Promise<RiskAnalysisResult> {
     try {
@@ -79,22 +94,22 @@ export class DeFiRiskAnalyzer {
         case "protocol":
           return await this.analyzeProtocol(request.address);
         default:
-          throw new Error(`Tipo de análisis no soportado: ${request.type}`);
+          throw new Error(`Tipo de analisis no soportado: ${request.type}`);
       }
     } catch (error) {
-      console.error("Error en análisis de riesgo:", error);
+      console.error("Error en analisis de riesgo:", error);
       return {
         risk_score: 100,
         risk_level: "critical",
         findings: [`Error al analizar: ${error instanceof Error ? error.message : "Unknown error"}`],
-        recommendations: ["No se pudo completar el análisis. Verificar manualmente."],
-        analysis: "Análisis fallido",
+        recommendations: ["No se pudo completar el analisis. Verificar manualmente."],
+        analysis: "Analisis fallido",
       };
     }
   }
 
   /**
-   * Análisis de token ERC-20
+   * Analisis de token ERC-20
    */
   private async analyzeToken(address: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
@@ -103,22 +118,18 @@ export class DeFiRiskAnalyzer {
     try {
       const provider = this.getProvider(network);
 
-      // Verificar código del contrato PRIMERO
       const code = await provider.getCode(address);
       const networkInfo = await provider.getNetwork();
-      findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
+      findings.push(`Red: ${this.getNetworkLabel(network)} (chainId: ${networkInfo.chainId})`);
 
       if (code === "0x") {
-        findings.push("⚠️ CRÍTICO: No hay código en esta dirección (es una EOA, no un contrato)");
-        findings.push("💡 Verifica que estés usando la red correcta (mainnet vs fuji)");
-        findings.push("💡 Si es mainnet, usa: network=mainnet o déjalo vacío");
-        findings.push("💡 Si es testnet, usa: network=fuji");
+        findings.push("CRITICO: No hay codigo en esta direccion (es una EOA, no un contrato)");
+        findings.push("Verifica que estes usando la red correcta (mainnet vs fuji)");
         return this.buildResult(100, findings);
       }
 
       const contract = new ethers.Contract(address, ERC20_ABI, provider);
 
-      // Información básica del token (con manejo individual de errores)
       let name = "Unknown";
       let symbol = "Unknown";
       let decimals = 18;
@@ -126,62 +137,58 @@ export class DeFiRiskAnalyzer {
 
       try {
         name = await contract.name();
-      } catch (e) {
-        findings.push("⚠️ No se pudo obtener name() - puede no ser ERC-20");
+      } catch {
+        findings.push("No se pudo obtener name() - puede no ser ERC-20");
         riskScore += 20;
       }
 
       try {
         symbol = await contract.symbol();
-      } catch (e) {
-        findings.push("⚠️ No se pudo obtener symbol() - puede no ser ERC-20");
+      } catch {
+        findings.push("No se pudo obtener symbol() - puede no ser ERC-20");
         riskScore += 20;
       }
 
       try {
         decimals = await contract.decimals();
-      } catch (e) {
-        findings.push("⚠️ No se pudo obtener decimals() - puede no ser ERC-20");
+      } catch {
+        findings.push("No se pudo obtener decimals() - puede no ser ERC-20");
         riskScore += 20;
       }
 
       try {
         totalSupply = await contract.totalSupply();
-      } catch (e) {
-        findings.push("⚠️ No se pudo obtener totalSupply() - puede no ser ERC-20");
+      } catch {
+        findings.push("No se pudo obtener totalSupply() - puede no ser ERC-20");
         riskScore += 20;
       }
 
-      // Si no se pudo obtener información básica, no es ERC-20 válido
       if (name === "Unknown" && symbol === "Unknown") {
-        findings.push("⚠️ CRÍTICO: El contrato no implementa interfaz ERC-20");
-        findings.push("💡 Este contrato existe pero no responde a las funciones estándar de tokens");
+        findings.push("CRITICO: El contrato no implementa interfaz ERC-20");
         return this.buildResult(100, findings);
       }
 
       findings.push(`Token: ${name} (${symbol})`);
       findings.push(`Decimales: ${decimals}`);
       findings.push(`Supply total: ${ethers.formatUnits(totalSupply, decimals)}`);
+      findings.push("Contrato desplegado y verificado");
 
-      findings.push("✓ Contrato desplegado y verificado");
-
-      // Análisis de concentración (top holder)
+      // Analisis de concentracion (top holder)
       const topHolders = await this.getTopHolders(address);
-      if (topHolders.length > 0) {
+      if (topHolders.length > 0 && totalSupply > BigInt(0)) {
         const topHolderBalance = await contract.balanceOf(topHolders[0]);
-        const percentage =
-          (Number(topHolderBalance) / Number(totalSupply)) * 100;
+        // Usar BigInt para evitar perdida de precision
+        const percentage = Number((topHolderBalance * BigInt(10000)) / totalSupply) / 100;
 
         if (percentage > 50) {
-          findings.push(`⚠️ ALTO RIESGO: Top holder posee ${percentage.toFixed(2)}% del supply`);
+          findings.push(`ALTO RIESGO: Top holder posee ${percentage.toFixed(2)}% del supply`);
           riskScore += 30;
         } else if (percentage > 20) {
-          findings.push(`⚠️ Top holder posee ${percentage.toFixed(2)}% del supply`);
+          findings.push(`Top holder posee ${percentage.toFixed(2)}% del supply`);
           riskScore += 15;
         }
       }
 
-      // Análisis con IA si está disponible
       if (this.anthropic) {
         const aiAnalysis = await this.analyzeWithAI({
           type: "token",
@@ -199,7 +206,7 @@ export class DeFiRiskAnalyzer {
   }
 
   /**
-   * Análisis de pool de liquidez (Uniswap V2 style + Trader Joe V2)
+   * Analisis de pool de liquidez (Uniswap V2 style + Trader Joe V2)
    */
   private async analyzePool(address: string, dex?: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
@@ -208,15 +215,13 @@ export class DeFiRiskAnalyzer {
     try {
       const provider = this.getProvider(network);
       const networkInfo = await provider.getNetwork();
-      findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
+      findings.push(`Red: ${this.getNetworkLabel(network)} (chainId: ${networkInfo.chainId})`);
 
       let token0Addr: string;
       let token1Addr: string;
-      let reserves: any;
+      let reserves: PoolReserves;
       let totalSupply: bigint;
-      let isTraderJoeV2 = false;
 
-      // Intentar con Trader Joe V2 primero si el DEX es traderjoe
       if (dex?.toLowerCase() === "traderjoe") {
         try {
           const pairV2 = new ethers.Contract(address, TRADERJOE_V2_ABI, provider);
@@ -228,38 +233,23 @@ export class DeFiRiskAnalyzer {
           ]);
           token0Addr = tokenX;
           token1Addr = tokenY;
-          reserves = [reservesAndId[0], reservesAndId[1]]; // reserveX, reserveY
+          reserves = { reserve0: reservesAndId[0], reserve1: reservesAndId[1] };
           totalSupply = supply;
-          isTraderJoeV2 = true;
-          findings.push(`Pool Type: Trader Joe V2 Liquidity Book ✓`);
-        } catch (v2Error) {
-          // Si falla V2, intentar con Uniswap V2 estándar
-          const pair = new ethers.Contract(address, PAIR_ABI, provider);
-          const [t0, t1, res, supply] = await Promise.all([
-            pair.token0(),
-            pair.token1(),
-            pair.getReserves(),
-            pair.totalSupply(),
-          ]);
-          token0Addr = t0;
-          token1Addr = t1;
-          reserves = res;
-          totalSupply = supply;
+          findings.push(`Pool Type: Trader Joe V2 Liquidity Book`);
+        } catch {
+          const result = await this.fetchUniswapV2Pool(address, provider);
+          token0Addr = result.token0Addr;
+          token1Addr = result.token1Addr;
+          reserves = result.reserves;
+          totalSupply = result.totalSupply;
           findings.push(`Pool Type: Uniswap V2 Compatible`);
         }
       } else {
-        // Para otros DEX, usar ABI estándar de Uniswap V2
-        const pair = new ethers.Contract(address, PAIR_ABI, provider);
-        const [t0, t1, res, supply] = await Promise.all([
-          pair.token0(),
-          pair.token1(),
-          pair.getReserves(),
-          pair.totalSupply(),
-        ]);
-        token0Addr = t0;
-        token1Addr = t1;
-        reserves = res;
-        totalSupply = supply;
+        const result = await this.fetchUniswapV2Pool(address, provider);
+        token0Addr = result.token0Addr;
+        token1Addr = result.token1Addr;
+        reserves = result.reserves;
+        totalSupply = result.totalSupply;
         findings.push(`Pool Type: Uniswap V2 Compatible`);
       }
 
@@ -267,7 +257,6 @@ export class DeFiRiskAnalyzer {
       findings.push(`Token0: ${token0Addr}`);
       findings.push(`Token1: ${token1Addr}`);
 
-      // Información de los tokens
       const token0 = new ethers.Contract(token0Addr, ERC20_ABI, provider);
       const token1 = new ethers.Contract(token1Addr, ERC20_ABI, provider);
 
@@ -280,38 +269,34 @@ export class DeFiRiskAnalyzer {
 
       findings.push(`Par: ${symbol0}/${symbol1}`);
 
-      // Análisis de liquidez
-      const reserve0 = ethers.formatUnits(reserves[0], decimals0);
-      const reserve1 = ethers.formatUnits(reserves[1], decimals1);
+      const reserve0 = ethers.formatUnits(reserves.reserve0, decimals0);
+      const reserve1 = ethers.formatUnits(reserves.reserve1, decimals1);
 
       findings.push(`Reserva ${symbol0}: ${reserve0}`);
       findings.push(`Reserva ${symbol1}: ${reserve1}`);
 
-      // Riesgo por liquidez baja
       const liquidityScore = Number(reserve0) * Number(reserve1);
       if (liquidityScore < 1000) {
-        findings.push("⚠️ ALTO RIESGO: Liquidez muy baja (< $1000 TVL estimado)");
+        findings.push("ALTO RIESGO: Liquidez muy baja (< $1000 TVL estimado)");
         riskScore += 40;
       } else if (liquidityScore < 10000) {
-        findings.push("⚠️ Liquidez baja (< $10k TVL estimado)");
+        findings.push("Liquidez baja (< $10k TVL estimado)");
         riskScore += 20;
       }
 
-      // Análisis de concentración de LP tokens
       const lpSupply = ethers.formatEther(totalSupply);
       findings.push(`LP Total Supply: ${lpSupply}`);
 
       if (Number(lpSupply) < 0.001) {
-        findings.push("⚠️ Supply de LP tokens muy bajo");
+        findings.push("Supply de LP tokens muy bajo");
         riskScore += 15;
       }
 
-      // Análisis con IA
       if (this.anthropic) {
         const aiAnalysis = await this.analyzeWithAI({
           type: "pool",
           data: {
-            dex,
+            dex: dex || "unknown",
             pair: `${symbol0}/${symbol1}`,
             reserves: { [symbol0]: reserve0, [symbol1]: reserve1 },
             lpSupply,
@@ -329,7 +314,26 @@ export class DeFiRiskAnalyzer {
   }
 
   /**
-   * Análisis de contrato inteligente
+   * Helper para leer datos de pool Uniswap V2
+   */
+  private async fetchUniswapV2Pool(address: string, provider: ethers.JsonRpcProvider) {
+    const pair = new ethers.Contract(address, PAIR_ABI, provider);
+    const [token0Addr, token1Addr, res, totalSupply] = await Promise.all([
+      pair.token0(),
+      pair.token1(),
+      pair.getReserves(),
+      pair.totalSupply(),
+    ]);
+    return {
+      token0Addr: token0Addr as string,
+      token1Addr: token1Addr as string,
+      reserves: { reserve0: res[0] as bigint, reserve1: res[1] as bigint } as PoolReserves,
+      totalSupply: totalSupply as bigint,
+    };
+  }
+
+  /**
+   * Analisis de contrato inteligente
    */
   private async analyzeContract(address: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
@@ -338,74 +342,66 @@ export class DeFiRiskAnalyzer {
     try {
       const provider = this.getProvider(network);
       const networkInfo = await provider.getNetwork();
-      findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
+      findings.push(`Red: ${this.getNetworkLabel(network)} (chainId: ${networkInfo.chainId})`);
 
-      // Verificar que existe código
       const code = await provider.getCode(address);
       if (code === "0x") {
-        findings.push("⚠️ CRÍTICO: No hay código en esta dirección (EOA o contrato vacío)");
-        findings.push("💡 Verifica que estés usando la red correcta (mainnet vs fuji)");
+        findings.push("CRITICO: No hay codigo en esta direccion (EOA o contrato vacio)");
+        findings.push("Verifica que estes usando la red correcta (mainnet vs fuji)");
         return this.buildResult(100, findings);
       }
 
-      findings.push("✓ Contrato desplegado");
+      findings.push("Contrato desplegado");
 
-      // Analizar tamaño del bytecode
-      const codeSize = (code.length - 2) / 2; // bytes
-      findings.push(`📏 Tamaño del bytecode: ${codeSize.toLocaleString()} bytes`);
+      const codeSize = (code.length - 2) / 2;
+      findings.push(`Tamano del bytecode: ${codeSize.toLocaleString()} bytes`);
 
       if (codeSize < 100) {
-        findings.push("⚠️ ALTO RIESGO: Contrato muy pequeño (posible proxy malicioso o honeypot)");
+        findings.push("ALTO RIESGO: Contrato muy pequeno (posible proxy malicioso o honeypot)");
         riskScore += 30;
       } else if (codeSize > 24576) {
-        findings.push("⚠️ Contrato muy grande (>24KB límite de Ethereum, podría ser proxy)");
+        findings.push("Contrato muy grande (>24KB limite de Ethereum, podria ser proxy)");
         riskScore += 10;
       }
 
-      // Obtener balance del contrato
       const balance = await provider.getBalance(address);
       const balanceAVAX = ethers.formatEther(balance);
-      findings.push(`💰 Balance del contrato: ${parseFloat(balanceAVAX).toFixed(4)} AVAX`);
+      findings.push(`Balance del contrato: ${parseFloat(balanceAVAX).toFixed(4)} AVAX`);
 
       if (Number(balanceAVAX) > 1000) {
-        findings.push("📊 Alto balance bloqueado en el contrato (>1000 AVAX)");
+        findings.push("Alto balance bloqueado en el contrato (>1000 AVAX)");
       }
 
-      // Detección de patrones de proxy (ERC-1967, EIP-1167)
       const isProxy = this.detectProxyPattern(code);
       if (isProxy.detected) {
-        findings.push(`🔄 Contrato Proxy detectado: ${isProxy.type}`);
-        findings.push("⚠️ IMPORTANTE: El contrato es upgradeable, verificar quién controla las actualizaciones");
+        findings.push(`Contrato Proxy detectado: ${isProxy.type}`);
+        findings.push("IMPORTANTE: El contrato es upgradeable, verificar quien controla las actualizaciones");
         riskScore += 20;
       }
 
-      // Detección de funciones peligrosas
       const dangerousFunctions = this.detectDangerousFunctions(code);
       if (dangerousFunctions.length > 0) {
-        findings.push(`⚠️ Funciones potencialmente peligrosas detectadas: ${dangerousFunctions.join(", ")}`);
+        findings.push(`Funciones potencialmente peligrosas detectadas: ${dangerousFunctions.join(", ")}`);
         riskScore += dangerousFunctions.length * 10;
       }
 
-      // Análisis de patrones comunes
       const patterns = this.detectCommonPatterns(code);
       if (patterns.length > 0) {
-        findings.push(`🔍 Patrones detectados: ${patterns.join(", ")}`);
+        findings.push(`Patrones detectados: ${patterns.join(", ")}`);
       }
 
-      // Verificar transacciones del contrato
       try {
         const txCount = await provider.getTransactionCount(address);
-        findings.push(`📈 Transacciones enviadas por el contrato: ${txCount}`);
+        findings.push(`Transacciones enviadas por el contrato: ${txCount}`);
 
         if (txCount === 0 && Number(balanceAVAX) > 10) {
-          findings.push("⚠️ Contrato con balance alto pero sin transacciones enviadas (sospechoso)");
+          findings.push("Contrato con balance alto pero sin transacciones enviadas (sospechoso)");
           riskScore += 15;
         }
-      } catch (error) {
-        // Ignore tx count error
+      } catch {
+        // Ignorar error de tx count
       }
 
-      // Análisis con IA del bytecode
       if (this.anthropic && codeSize < 10000) {
         const aiAnalysis = await this.analyzeWithAI({
           type: "contract",
@@ -416,7 +412,7 @@ export class DeFiRiskAnalyzer {
             isProxy: isProxy.detected,
             dangerousFunctions,
             patterns,
-            bytecode: code.substring(0, 1000)
+            bytecodePreview: code.substring(0, 1000),
           },
           findings,
         });
@@ -434,7 +430,7 @@ export class DeFiRiskAnalyzer {
    * Detecta patrones de proxy en el bytecode
    */
   private detectProxyPattern(bytecode: string): { detected: boolean; type: string } {
-    // ERC-1967 (Transparent/UUPS Proxy) - slot: 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
+    // ERC-1967 (Transparent/UUPS Proxy)
     if (bytecode.includes("360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")) {
       return { detected: true, type: "ERC-1967 (UUPS/Transparent Proxy)" };
     }
@@ -444,12 +440,12 @@ export class DeFiRiskAnalyzer {
       return { detected: true, type: "EIP-1167 (Minimal Proxy/Clone)" };
     }
 
-    // Beacon Proxy - slot: 0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50
+    // Beacon Proxy
     if (bytecode.includes("a3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50")) {
       return { detected: true, type: "Beacon Proxy" };
     }
 
-    // Delegatecall pattern (proxy común)
+    // Delegatecall pattern
     if (bytecode.includes("delegatecall") || bytecode.match(/5b[0-9a-f]{2}f4/)) {
       return { detected: true, type: "Custom Proxy (delegatecall detectado)" };
     }
@@ -463,17 +459,14 @@ export class DeFiRiskAnalyzer {
   private detectDangerousFunctions(bytecode: string): string[] {
     const dangerous: string[] = [];
 
-    // selfdestruct (opcode: ff)
     if (bytecode.match(/ff$/m) || bytecode.includes("selfdestruct")) {
       dangerous.push("selfdestruct");
     }
 
-    // delegatecall (opcode: f4)
     if (bytecode.includes("f4") && bytecode.length > 1000) {
       dangerous.push("delegatecall");
     }
 
-    // callcode (deprecated, opcode: f2)
     if (bytecode.includes("f2")) {
       dangerous.push("callcode (deprecated)");
     }
@@ -492,12 +485,12 @@ export class DeFiRiskAnalyzer {
       patterns.push("ERC-20");
     }
 
-    // ERC-721 (transferFrom signature: 23b872dd)
+    // ERC-721 (transferFrom + ownerOf signatures)
     if (bytecode.includes("23b872dd") && bytecode.includes("6352211e")) {
       patterns.push("ERC-721");
     }
 
-    // Ownable (owner storage pattern)
+    // Ownable
     if (bytecode.includes("8da5cb5b")) {
       patterns.push("Ownable");
     }
@@ -511,38 +504,38 @@ export class DeFiRiskAnalyzer {
   }
 
   /**
-   * Análisis de protocolo DeFi
+   * Analisis de protocolo DeFi
    */
   private async analyzeProtocol(address: string): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
-    findings.push("Análisis de protocolo en desarrollo");
-    findings.push("Por implementar: TVL, auditorías, historial");
+    findings.push("Analisis de protocolo en desarrollo");
+    findings.push("Por implementar: TVL, auditorias, historial");
 
     return this.buildResult(50, findings);
   }
 
   /**
-   * Análisis con IA usando Claude
+   * Analisis con IA usando Claude
    */
-  private async analyzeWithAI(context: any): Promise<string> {
+  private async analyzeWithAI(context: AIAnalysisContext): Promise<string> {
     if (!this.anthropic) {
-      return "Análisis de IA no disponible (API key no configurada)";
+      return "Analisis de IA no disponible (API key no configurada)";
     }
 
     try {
-      const prompt = `Eres un experto en seguridad DeFi. Analiza los siguientes datos y proporciona un análisis de riesgo conciso:
+      const prompt = `Eres un experto en seguridad DeFi. Analiza los siguientes datos y proporciona un analisis de riesgo conciso:
 
 Tipo: ${context.type}
 Datos: ${JSON.stringify(context.data, null, 2)}
 Hallazgos previos: ${context.findings.join(", ")}
 
 Proporciona:
-1. Evaluación de riesgo general
+1. Evaluacion de riesgo general
 2. Principales preocupaciones de seguridad
-3. Recomendaciones específicas
-4. Conclusión en 2-3 líneas
+3. Recomendaciones especificas
+4. Conclusion en 2-3 lineas
 
-Sé conciso y directo.`;
+Se conciso y directo.`;
 
       const message = await this.anthropic.messages.create({
         model: "claude-sonnet-4-5-20250929",
@@ -551,18 +544,17 @@ Sé conciso y directo.`;
       });
 
       const textContent = message.content.find((c) => c.type === "text");
-      return textContent && "text" in textContent ? textContent.text : "Sin análisis";
+      return textContent && "text" in textContent ? textContent.text : "Sin analisis";
     } catch (error) {
-      console.error("Error en análisis de IA:", error);
-      return "Error al obtener análisis de IA";
+      console.error("Error en analisis de IA:", error);
+      return "Error al obtener analisis de IA";
     }
   }
 
   /**
-   * Obtener top holders (simplificado - en producción usar API como Covalent)
+   * Obtener top holders (simplificado - en produccion usar API como Covalent)
    */
-  private async getTopHolders(tokenAddress: string): Promise<string[]> {
-    // Placeholder: en producción integrar con APIs como Covalent, Moralis, etc.
+  private async getTopHolders(_tokenAddress: string): Promise<string[]> {
     return [];
   }
 
@@ -579,9 +571,9 @@ Sé conciso y directo.`;
 
     const recommendations: string[] = [];
     if (riskScore > 70) {
-      recommendations.push("⚠️ ALTO RIESGO: Evitar interactuar con este contrato/token");
+      recommendations.push("ALTO RIESGO: Evitar interactuar con este contrato/token");
     } else if (riskScore > 40) {
-      recommendations.push("Proceder con precaución y hacer análisis adicional");
+      recommendations.push("Proceder con precaucion y hacer analisis adicional");
     } else {
       recommendations.push("Riesgo aceptable, pero siempre verificar por fuentes adicionales");
     }
@@ -591,7 +583,7 @@ Sé conciso y directo.`;
       risk_level: level,
       findings,
       recommendations,
-      analysis: aiAnalysis || "Análisis básico completado",
+      analysis: aiAnalysis || "Analisis basico completado",
     };
   }
 }

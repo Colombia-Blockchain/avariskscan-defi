@@ -9,6 +9,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY registration.json ./
 COPY dashboard.html ./
+COPY public ./public
 COPY .well-known ./.well-known
 
 RUN npm run build

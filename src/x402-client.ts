@@ -7,17 +7,17 @@ import { ethers } from "ethers";
  * El facilitador ejecuta el pago on-chain
  */
 
-// Configuración x402 en Fuji
-const FACILITATOR_URL = "https://facilitator.ultravioletadao.xyz";
-const USDC_FUJI = "0x5425890298aed601595a70AB815c96711a31Bc65";
-const RECIPIENT = "0x7C599af5Dce814B13CD0c66F9C783Dd1e4C69Ae8"; // Wallet del facilitador
-const NETWORK = "avalanche-fuji";
+// Configuracion x402 (configurable via env vars)
+const FACILITATOR_URL = process.env.FACILITATOR_URL || "https://facilitator.ultravioletadao.xyz";
+const USDC_FUJI = process.env.USDC_CONTRACT || "0x5425890298aed601595a70AB815c96711a31Bc65";
+const RECIPIENT = process.env.X402_RECIPIENT || "0x7C599af5Dce814B13CD0c66F9C783Dd1e4C69Ae8";
+const NETWORK = process.env.X402_NETWORK || "avalanche-fuji";
 
 // EIP-712 Domain para USDC en Fuji
 const EIP712_DOMAIN = {
   name: "USD Coin",
   version: "2",
-  chainId: 43113,
+  chainId: Number(process.env.X402_CHAIN_ID || 43113),
   verifyingContract: USDC_FUJI,
 };
 
@@ -54,6 +54,19 @@ export interface X402Payment {
   amount: string;
 }
 
+export interface AnalysisRequest {
+  type: "token" | "pool" | "contract" | "protocol";
+  address: string;
+  network?: "mainnet" | "fuji";
+  dex?: string;
+}
+
+export interface AgentInfo {
+  agentId: number;
+  metadataURI: string;
+  owner: string;
+}
+
 export class X402Client {
   private wallet: ethers.Wallet;
 
@@ -65,8 +78,10 @@ export class X402Client {
    * Crea un payment proof firmado con EIP-712
    */
   async createPaymentProof(amountUSDC: number): Promise<X402Payment> {
-    const amountMicroUSDC = (amountUSDC * 1_000_000).toString(); // USDC tiene 6 decimales
-    const validBefore = Math.floor(Date.now() / 1000) + 3600; // Válido por 1 hora
+    // Fix: usar Math.round para evitar errores de precision flotante
+    const amountMicroUSDC = Math.round(amountUSDC * 1_000_000).toString();
+    const now = Math.floor(Date.now() / 1000);
+    const validBefore = now + 3600; // Valido por 1 hora
     const nonce = ethers.hexlify(ethers.randomBytes(32));
 
     const payload = {
@@ -113,17 +128,13 @@ export class X402Client {
   async callProtectedEndpoint(
     url: string,
     method: string,
-    data: any,
+    data: AnalysisRequest,
     amountUSDC: number = 0.01
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     try {
-      // Crear payment proof
       const payment = await this.createPaymentProof(amountUSDC);
-
-      // Codificar en base64
       const paymentHeader = Buffer.from(JSON.stringify(payment)).toString("base64");
 
-      // Hacer la petición
       const response = await fetch(url, {
         method,
         headers: {
@@ -131,6 +142,7 @@ export class X402Client {
           "X-PAYMENT": paymentHeader,
         },
         body: JSON.stringify(data),
+        signal: AbortSignal.timeout(30_000), // 30s timeout
       });
 
       if (!response.ok) {
@@ -138,7 +150,7 @@ export class X402Client {
         throw new Error(`HTTP ${response.status}: ${error}`);
       }
 
-      return await response.json();
+      return await response.json() as Record<string, unknown>;
     } catch (error) {
       console.error("Error al llamar endpoint protegido:", error);
       throw error;
@@ -146,11 +158,13 @@ export class X402Client {
   }
 
   /**
-   * Verifica si el facilitador está activo
+   * Verifica si el facilitador esta activo
    */
   async checkFacilitator(): Promise<boolean> {
     try {
-      const response = await fetch(FACILITATOR_URL);
+      const response = await fetch(FACILITATOR_URL, {
+        signal: AbortSignal.timeout(10_000),
+      });
       return response.ok;
     } catch (error) {
       console.error("Facilitador no disponible:", error);
@@ -171,17 +185,46 @@ export class X402Client {
 }
 
 /**
- * Helper para descubrir otros agentes en el registry
+ * Descubre agentes registrados en el registry ERC-8004 leyendo eventos on-chain
  */
-export async function discoverAgents(registryAddress: string): Promise<any[]> {
-  // Placeholder: integrar con el scanner o leer eventos del registry
-  // Por ahora retorna vacío, pero aquí podrías:
-  // 1. Leer eventos AgentRegistered del registry
-  // 2. Consultar el scanner API
-  // 3. Mantener una base de datos local de agentes
+export async function discoverAgents(registryAddress: string): Promise<AgentInfo[]> {
+  const rpcUrl = process.env.AVALANCHE_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc";
 
-  console.log(`Discovering agents in registry ${registryAddress}...`);
-  return [];
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+    // ABI minimo para leer el registry
+    const registryABI = [
+      "function totalSupply() view returns (uint256)",
+      "function tokenURI(uint256 tokenId) view returns (string)",
+      "function ownerOf(uint256 tokenId) view returns (address)",
+    ];
+
+    const registry = new ethers.Contract(registryAddress, registryABI, provider);
+    const totalSupply = await registry.totalSupply();
+    const total = Number(totalSupply);
+
+    // Leer los ultimos 10 agentes registrados (o menos si hay menos)
+    const count = Math.min(total, 10);
+    const agents: AgentInfo[] = [];
+
+    for (let i = total; i > total - count && i > 0; i--) {
+      try {
+        const [metadataURI, owner] = await Promise.all([
+          registry.tokenURI(i),
+          registry.ownerOf(i),
+        ]);
+        agents.push({ agentId: i, metadataURI, owner });
+      } catch {
+        // Token ID puede no existir si fue quemado
+      }
+    }
+
+    return agents;
+  } catch (error) {
+    console.error(`Error discovering agents in registry ${registryAddress}:`, error);
+    return [];
+  }
 }
 
 /**
@@ -189,14 +232,14 @@ export async function discoverAgents(registryAddress: string): Promise<any[]> {
  */
 export async function callAgentResearch(
   agentUrl: string,
-  analysisRequest: any,
+  analysisRequest: AnalysisRequest,
   privateKey: string
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   const client = new X402Client(privateKey);
   return await client.callProtectedEndpoint(
     `${agentUrl}/a2a/research`,
     "POST",
     analysisRequest,
-    0.01 // $0.01 en USDC
+    0.01
   );
 }

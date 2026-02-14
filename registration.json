@@ -1,8 +1,8 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  "name": "Cyber_paisa_Defi",
-  "description": "Cyber Paisa - Evaluador de riesgo DeFi en Avalanche. Agente inteligente colombiano que analiza contratos, tokens y protocolos para identificar riesgos. Registrado vía ERC-8004, soporta x402.",
-  "image": "https://example.com/avatar.png",
+  "name": "AvaBuilder Agent",
+  "description": "The first AI builder agent on Avalanche. Guides developers from zero to deploying L1 blockchains, smart contracts, DeFi protocols, games, RWA, bridges, and any project on the Avalanche ecosystem. Powered by 128K+ lines of official documentation. ERC-8004 registered, x402 enabled.",
+  "image": "https://avariskscan-defi-production.up.railway.app/public/avabuilder-agent.png",
   "services": [
     {
       "name": "web",
@@ -31,5 +31,14 @@
       "agentRegistry": "eip155:43114:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
     }
   ],
-  "supportedTrust": ["reputation"]
+  "supportedTrust": ["reputation"],
+  "capabilities": [
+    "l1-creation",
+    "smart-contracts",
+    "defi-building",
+    "cross-chain",
+    "tokenomics",
+    "sdk-guidance",
+    "ecosystem-explorer"
+  ]
 }

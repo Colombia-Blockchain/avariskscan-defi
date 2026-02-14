@@ -1,7 +1,7 @@
 {
-  "name": "erc8004-agent",
-  "version": "0.1.0",
-  "description": "ERC-8004 discoverable agent with x402 support for UltraVioleta DAO",
+  "name": "avabuilder-agent",
+  "version": "1.0.0",
+  "description": "AvaBuilder Agent - The first AI builder agent on Avalanche. Guides developers to create L1s, dApps, DeFi, games, and more.",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@hono/node-server": "^1.13.7",
+    "dotenv": "^17.3.1",
     "ethers": "^6.13.0",
     "hono": "^4.7.1",
     "x402-hono": "^1.1.0"
