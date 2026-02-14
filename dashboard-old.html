@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber_paisa_Defi - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%);
+            animation: floatBg 20s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes floatBg {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Glassmorphism header */
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow:
+                0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+                0 0 80px rgba(139, 92, 246, 0.3);
+            margin-bottom: 40px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            position: relative;
+            overflow: hidden;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg,
+                rgba(139, 92, 246, 0.5),
+                rgba(59, 130, 246, 0.5),
+                rgba(168, 85, 247, 0.5),
+                rgba(139, 92, 246, 0.5)
+            );
+            border-radius: 30px;
+            z-index: -1;
+            filter: blur(15px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .header:hover::before {
+            opacity: 1;
+        }
+
+        .header:hover {
+            transform: translateY(-5px);
+        }
+
+        .header h1 {
+            background: linear-gradient(135deg, #fff 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 3em;
+            margin-bottom: 15px;
+            font-weight: 800;
+            text-shadow: 0 0 30px rgba(167, 139, 250, 0.5);
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(167, 139, 250, 0.8)); }
+            50% { filter: drop-shadow(0 0 40px rgba(167, 139, 250, 1)); }
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2em;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        /* 3D Stats Grid */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+            perspective: 1000px;
+        }
+
+        /* Glassmorphism 3D card with edge glow */
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 35px;
+            border-radius: 25px;
+            box-shadow:
+                0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            position: relative;
+            transform-style: preserve-3d;
+            transform: translateZ(0) rotateX(0deg) rotateY(0deg);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            overflow: hidden;
+        }
+
+        /* Animated edge glow */
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg,
+                #8b5cf6,
+                #3b82f6,
+                #a855f7,
+                #8b5cf6
+            );
+            border-radius: 25px;
+            z-index: -1;
+            filter: blur(20px);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            animation: rotateBorder 4s linear infinite;
+        }
+
+        @keyframes rotateBorder {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateZ(30px) rotateX(5deg) rotateY(5deg) translateY(-10px);
+            box-shadow:
+                0 20px 60px 0 rgba(31, 38, 135, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+                0 0 100px rgba(139, 92, 246, 0.5);
+        }
+
+        /* Inner glow effect */
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .stat-card:hover::after {
+            opacity: 1;
+        }
+
+        .stat-card h3 {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-card .value {
+            background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5em;
+            font-weight: 800;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 0 30px rgba(196, 181, 253, 0.5);
+        }
+
+        /* Glassmorphism analyzer section */
+        .analyzer {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow:
+                0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+            margin-bottom: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            position: relative;
+            overflow: hidden;
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+
+        .analyzer::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg,
+                rgba(139, 92, 246, 0.3),
+                rgba(59, 130, 246, 0.3),
+                rgba(168, 85, 247, 0.3)
+            );
+            border-radius: 30px;
+            z-index: -1;
+            filter: blur(20px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .analyzer:hover::before {
+            opacity: 1;
+        }
+
+        .analyzer:hover {
+            transform: translateY(-5px);
+        }
+
+        .analyzer h2 {
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+            letter-spacing: 0.5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-weight: 500;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #a78bfa;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        select option {
+            background: #1e3c72;
+            color: white;
+        }
+
+        /* 3D Button with glow */
+        button {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #a855f7 100%);
+            color: white;
+            padding: 16px 40px;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 10px 30px rgba(139, 92, 246, 0.4),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            transform: translateY(0) scale(1);
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow:
+                0 15px 40px rgba(139, 92, 246, 0.6),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+                0 0 50px rgba(139, 92, 246, 0.8);
+        }
+
+        button:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: translateY(0) scale(1);
+        }
+
+        .results {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 20px;
+            margin-top: 25px;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+        }
+
+        .results.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results h3 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .result-item {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-item strong {
+            color: white;
+            font-weight: 600;
+        }
+
+        .result-item ul {
+            margin-top: 10px;
+            padding-left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .result-item ul li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
+            margin-left: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .risk-low {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .risk-medium {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .risk-high {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .risk-critical {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 15px rgba(220, 38, 38, 0.5); }
+            50% { box-shadow: 0 4px 30px rgba(220, 38, 38, 0.8); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .protocols-list {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* Custom scrollbar */
+        .protocols-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .protocols-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .protocols-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            border-radius: 10px;
+        }
+
+        .protocol-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 20px;
+            border-left: 4px solid transparent;
+            border-image: linear-gradient(135deg, #8b5cf6, #6366f1) 1;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .protocol-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            transition: width 0.3s ease;
+        }
+
+        .protocol-item:hover::before {
+            width: 100%;
+            opacity: 0.1;
+        }
+
+        .protocol-item:hover {
+            transform: translateX(10px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+        }
+
+        .protocol-item strong {
+            color: white;
+            font-size: 1.2em;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .protocol-item div {
+            color: rgba(255, 255, 255, 0.8);
+            margin: 5px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .analyzer {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🇨🇴 Cyber_paisa_Defi</h1>
+            <p>Evaluador de riesgo DeFi en Avalanche - Powered by AI</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <h3>Avalanche TVL</h3>
+                <div class="value" id="avax-tvl">Loading...</div>
+            </div>
+            <div class="stat-card">
+                <h3>Protocolos</h3>
+                <div class="value" id="protocol-count">Loading...</div>
+            </div>
+            <div class="stat-card">
+                <h3>Estado</h3>
+                <div class="value" id="agent-status">Loading...</div>
+            </div>
+        </div>
+
+        <div class="analyzer">
+            <h2>🔍 Analizar Riesgo</h2>
+
+            <div class="form-group">
+                <label for="analysis-type">Tipo de Análisis</label>
+                <select id="analysis-type">
+                    <option value="token">Token ERC-20</option>
+                    <option value="pool">Pool de Liquidez</option>
+                    <option value="contract">Contrato Inteligente</option>
+                    <option value="protocol">Protocolo DeFi</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Dirección / Nombre del Protocolo</label>
+                <input
+                    type="text"
+                    id="address"
+                    placeholder="0x... o nombre del protocolo"
+                >
+            </div>
+
+            <div class="form-group" id="dex-group" style="display:none;">
+                <label for="dex">DEX</label>
+                <select id="dex">
+                    <option value="traderjoe">Trader Joe</option>
+                    <option value="pangolin">Pangolin</option>
+                    <option value="uniswap">Uniswap</option>
+                </select>
+            </div>
+
+            <button onclick="analyzeRisk()" id="analyze-btn">
+                Analizar Riesgo
+            </button>
+
+            <div class="results" id="results"></div>
+        </div>
+
+        <div class="analyzer">
+            <h2>📊 Top Protocolos en Avalanche</h2>
+            <div class="protocols-list" id="protocols-list">
+                <div style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                    <div class="loading" style="width: 40px; height: 40px; margin: 0 auto 20px;"></div>
+                    <p>Cargando protocolos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use localhost for local development (detect port automatically)
+        const API_URL = window.location.hostname === 'localhost'
+            ? `http://localhost:${window.location.port || 3000}`
+            : 'https://avariskscan-defi-production.up.railway.app';
+
+        // Load initial data
+        async function loadStats() {
+            try {
+                // Health check
+                const healthRes = await fetch(`${API_URL}/`);
+                const health = await healthRes.json();
+                document.getElementById('agent-status').textContent = health.status === 'ok' ? '✅ Online' : '❌ Offline';
+
+                // Avalanche metrics
+                const metricsRes = await fetch(`${API_URL}/defi/avalanche`);
+                const metrics = await metricsRes.json();
+
+                if (metrics.success) {
+                    document.getElementById('avax-tvl').textContent = metrics.metrics.totalTVL;
+                    document.getElementById('protocol-count').textContent = metrics.metrics.protocolCount;
+
+                    // Display top protocols
+                    const protocolsList = document.getElementById('protocols-list');
+                    protocolsList.innerHTML = metrics.metrics.topProtocols.map((p, i) => `
+                        <div class="protocol-item">
+                            <strong>#${i + 1} ${p.name}</strong>
+                            <div>💰 TVL: ${p.tvl}</div>
+                            <div style="font-size: 0.9em; opacity: 0.8;">📁 ${p.category || 'DeFi'}</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('agent-status').textContent = '❌ Error';
+                document.getElementById('protocols-list').innerHTML = `
+                    <div class="error">Error cargando datos: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Toggle DEX selector for pool analysis
+        document.getElementById('analysis-type').addEventListener('change', (e) => {
+            const dexGroup = document.getElementById('dex-group');
+            dexGroup.style.display = e.target.value === 'pool' ? 'block' : 'none';
+
+            const addressInput = document.getElementById('address');
+            if (e.target.value === 'protocol') {
+                addressInput.placeholder = 'Ej: aave-v3, traderjoe, curve';
+            } else {
+                addressInput.placeholder = '0x...';
+            }
+        });
+
+        // Analyze risk
+        async function analyzeRisk() {
+            const type = document.getElementById('analysis-type').value;
+            const address = document.getElementById('address').value.trim();
+            const dex = document.getElementById('dex').value;
+            const resultsDiv = document.getElementById('results');
+            const btn = document.getElementById('analyze-btn');
+
+            if (!address) {
+                alert('Por favor ingresa una dirección o nombre de protocolo');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Analizando...';
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.remove('show');
+
+            try {
+                let result;
+
+                if (type === 'protocol') {
+                    const res = await fetch(`${API_URL}/defi/protocol/${address}`);
+                    result = await res.json();
+                    displayProtocolResult(result);
+                } else {
+                    // Usar endpoint público sin x402
+                    const res = await fetch(`${API_URL}/defi/analyze`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type,
+                            address,
+                            network: 'mainnet',
+                            dex: type === 'pool' ? dex : undefined
+                        })
+                    });
+                    result = await res.json();
+                    displayRiskResult(result);
+                }
+
+                resultsDiv.classList.add('show');
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                resultsDiv.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analizar Riesgo';
+            }
+        }
+
+        function displayRiskResult(result) {
+            const resultsDiv = document.getElementById('results');
+
+            if (result.success && result.result) {
+                const { risk_score, risk_level, findings, recommendations, analysis } = result.result;
+
+                const riskClass = `risk-${risk_level}`;
+                const riskLabel = risk_level === 'low' ? 'Bajo' :
+                                risk_level === 'medium' ? 'Medio' :
+                                risk_level === 'high' ? 'Alto' : 'Crítico';
+
+                const riskEmoji = risk_level === 'low' ? '✅' :
+                                 risk_level === 'medium' ? '⚠️' :
+                                 risk_level === 'high' ? '🔴' : '🚨';
+
+                resultsDiv.innerHTML = `
+                    <h3>${riskEmoji} Resultado del Análisis
+                        <span class="risk-badge ${riskClass}">
+                            Riesgo: ${riskLabel} (${risk_score}/100)
+                        </span>
+                    </h3>
+
+                    <div class="result-item">
+                        <strong>🔍 Hallazgos:</strong>
+                        <ul>
+                            ${findings.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="result-item">
+                        <strong>💡 Recomendaciones:</strong>
+                        <ul>
+                            ${recommendations.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    ${analysis ? `
+                        <div class="result-item">
+                            <strong>🤖 Análisis con IA:</strong>
+                            <p style="margin-top: 10px; line-height: 1.8;">${analysis}</p>
+                        </div>
+                    ` : ''}
+                `;
+            } else {
+                resultsDiv.innerHTML = `<div class="error">❌ ${result.error || 'Error en el análisis'}</div>`;
+            }
+        }
+
+        function displayProtocolResult(result) {
+            const resultsDiv = document.getElementById('results');
+
+            if (result.success && result.analysis) {
+                const { tvl, changes } = result.analysis;
+
+                resultsDiv.innerHTML = `
+                    <h3>📊 Análisis de Protocolo: ${result.protocol}</h3>
+
+                    <div class="result-item">
+                        <strong>💰 TVL:</strong> $${(tvl / 1e6).toFixed(2)}M
+                    </div>
+
+                    ${changes['1d'] !== undefined ? `
+                        <div class="result-item">
+                            <strong>📈 Cambio 24h:</strong> ${changes['1d'] > 0 ? '📈' : '📉'} ${changes['1d'].toFixed(2)}%
+                        </div>
+                    ` : ''}
+
+                    ${changes['7d'] !== undefined ? `
+                        <div class="result-item">
+                            <strong>📊 Cambio 7d:</strong> ${changes['7d'] > 0 ? '📈' : '📉'} ${changes['7d'].toFixed(2)}%
+                        </div>
+                    ` : ''}
+                `;
+            } else {
+                resultsDiv.innerHTML = `<div class="error">❌ Protocolo no encontrado</div>`;
+            }
+        }
+
+        // 3D effect on cards
+        document.querySelectorAll('.stat-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                const rotateX = (y - centerY) / 10;
+                const rotateY = (centerX - x) / 10;
+
+                card.style.transform = `translateZ(30px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-10px)`;
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateZ(0) rotateX(0deg) rotateY(0deg)';
+            });
+        });
+
+        // Load data on page load
+        loadStats();
+    </script>
+</body>
+</html>
