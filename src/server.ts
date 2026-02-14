@@ -282,14 +282,15 @@ app.get("/api/l1s", async (c) => {
   try {
     const subnets = await defiAPIs.getAvalancheL1s();
     const l1s = subnets.map((s) => {
-      const chain = s.blockchains[0];
+      const chains = s.blockchains || [];
+      const chain = chains[0];
       return {
         name: chain?.blockchainName || "Unknown",
         subnetId: s.subnetId,
         blockchainId: chain?.blockchainId || "",
         evmChainId: chain?.evmChainId || null,
         isL1: s.isL1,
-        chainsCount: s.blockchains.length,
+        chainsCount: chains.length,
         createdAt: new Date(s.createBlockTimestamp * 1000).toISOString(),
         explorerUrl: `https://subnets.avax.network/${chain?.blockchainName?.toLowerCase().replace(/\s+/g, "-") || "c-chain"}`,
         hasValidatorManager: !!s.l1ValidatorManagerDetails,

@@ -635,24 +635,40 @@ export class DeFiAPIs {
   }
 
   /**
-   * Glacier: Listar todas las L1s (subnets) de Avalanche con sus blockchains
+   * Glacier: Listar TODAS las L1s (subnets) de Avalanche con paginación completa
    */
   async getAvalancheL1s(): Promise<AvalancheSubnet[]> {
-    const cacheKey = "avalanche-subnets";
+    const cacheKey = "avalanche-subnets-all";
     const cached = this.glacierCache.get(cacheKey) as AvalancheSubnet[] | null;
     if (cached) return cached;
 
     try {
-      const response = await fetch(
-        "https://glacier-api.avax.network/v1/networks/mainnet/subnets?pageSize=100&sortOrder=desc",
-        { signal: AbortSignal.timeout(15_000) }
-      );
-      if (!response.ok) return [];
+      const allSubnets: AvalancheSubnet[] = [];
+      let pageToken: string | null = null;
+      let pages = 0;
+      const maxPages = 10; // Safety limit
 
-      const data = await response.json() as { subnets?: AvalancheSubnet[] };
-      const subnets = (data.subnets || []).filter(s => s.blockchains && s.blockchains.length > 0);
-      this.glacierCache.set(cacheKey, subnets);
-      return subnets;
+      do {
+        const url = new URL("https://glacier-api.avax.network/v1/networks/mainnet/subnets");
+        url.searchParams.set("pageSize", "100");
+        url.searchParams.set("sortOrder", "desc");
+        if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+        const response = await fetch(url.toString(), {
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!response.ok) break;
+
+        const data = await response.json() as { subnets?: AvalancheSubnet[]; nextPageToken?: string };
+        const subnets = data.subnets || [];
+        allSubnets.push(...subnets);
+
+        pageToken = data.nextPageToken || null;
+        pages++;
+      } while (pageToken && pages < maxPages);
+
+      this.glacierCache.set(cacheKey, allSubnets);
+      return allSubnets;
     } catch (error) {
       console.error("Glacier subnets error:", error);
       return [];

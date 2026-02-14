@@ -625,16 +625,14 @@
 
                 <!-- ERC-8004 Agents Section -->
                 <div class="market-section" id="mktAgents">
-                    <div class="market-card">
-                        <h3>ERC-8004 AI Agent Registry</h3>
-                        <div style="margin-bottom:10px;">
-                            <a href="https://erc-8004scan.xyz" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--red-dim);border:1px solid var(--border-a);border-radius:8px;color:var(--red);text-decoration:none;font-size:0.75rem;font-weight:600;transition:all 0.2s;">
-                                Open ERC-8004 Scanner
-                                <span style="font-size:0.9rem;">&#8599;</span>
-                            </a>
-                            <span style="color:var(--t3);font-size:0.65rem;margin-left:8px;">Browse all registered AI agents on Avalanche</span>
-                        </div>
-                        <div id="agentsList"><span class="loading-small">Loading agents from registry...</span></div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <h3 style="margin:0;font-size:0.85rem;font-weight:700;color:var(--t1);">ERC-8004 AI Agent Scanner</h3>
+                        <a href="https://erc-8004scan.xyz" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--red-dim);border:1px solid var(--border-a);border-radius:6px;color:var(--red);text-decoration:none;font-size:0.6rem;font-weight:600;">
+                            Open in new tab &#8599;
+                        </a>
+                    </div>
+                    <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--glass);">
+                        <iframe src="https://erc-8004scan.xyz" style="width:100%;height:calc(100vh - 260px);min-height:500px;border:none;background:#0a0a0f;" loading="lazy" allow="clipboard-write"></iframe>
                     </div>
                 </div>
 
@@ -882,42 +880,8 @@
             }
         }
 
-        async function loadAgentScanner() {
-            const container = document.getElementById('agentsList');
-            if (container.dataset.loaded) return;
-            container.innerHTML = '<span class="loading-small">Loading agents from ERC-8004 registry...</span>';
-            try {
-                const res = await fetch(API_BASE + '/agents/discover');
-                const data = await res.json();
-                if (data.success && data.agentsList && data.agentsList.length > 0) {
-                    container.innerHTML = data.agentsList.map((agent, i) =>
-                        '<div class="l1-card" style="cursor:default;">' +
-                            '<div class="l1-name"><span class="l1-status active"></span>Agent #' + (agent.id || i) + '</div>' +
-                            '<div class="l1-meta">' + (agent.name || 'ERC-8004 Agent') + '</div>' +
-                            (agent.endpoint ? '<div class="l1-meta" style="margin-top:2px;"><a href="' + agent.endpoint + '" target="_blank" style="color:var(--blue);text-decoration:none;">Visit Agent &#8599;</a></div>' : '') +
-                        '</div>'
-                    ).join('');
-                    container.dataset.loaded = 'true';
-                } else {
-                    container.innerHTML =
-                        '<div class="l1-grid">' +
-                            '<div class="l1-card" style="cursor:default;">' +
-                                '<div class="l1-name"><span class="l1-status active"></span>AvaBuilder Agent</div>' +
-                                '<div class="l1-meta">Agent ID: 1686 (Mainnet) | 15 (Fuji)</div>' +
-                                '<div class="l1-meta" style="margin-top:2px;">The first AI builder agent on Avalanche</div>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div style="margin-top:8px;font-size:0.65rem;color:var(--t3);">' +
-                            'Visit <a href="https://erc-8004scan.xyz" target="_blank" style="color:var(--red);text-decoration:none;">erc-8004scan.xyz</a> to explore all registered agents' +
-                        '</div>';
-                }
-            } catch (e) {
-                container.innerHTML =
-                    '<div style="text-align:center;padding:16px;">' +
-                        '<div style="font-size:0.75rem;color:var(--t2);margin-bottom:8px;">Explore AI Agents on Avalanche</div>' +
-                        '<a href="https://erc-8004scan.xyz" target="_blank" style="display:inline-block;padding:10px 24px;background:var(--red-dim);border:1px solid var(--border-a);border-radius:8px;color:var(--red);text-decoration:none;font-size:0.75rem;font-weight:600;">Open ERC-8004 Scanner &#8599;</a>' +
-                    '</div>';
-            }
+        function loadAgentScanner() {
+            // Scanner is embedded as iframe - no additional loading needed
         }
 
         async function searchToken() {
