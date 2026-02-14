@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  "name": "AvaRisk DeFi",
-  "description": "Evaluador de riesgo DeFi en Avalanche. Agente inteligente que analiza contratos, tokens y protocolos para identificar riesgos. Registrado vía ERC-8004, soporta x402.",
+  "name": "Cyber_paisa_Defi",
+  "description": "Cyber Paisa - Evaluador de riesgo DeFi en Avalanche. Agente inteligente colombiano que analiza contratos, tokens y protocolos para identificar riesgos. Registrado vía ERC-8004, soporta x402.",
   "image": "https://example.com/avatar.png",
   "services": [
     {
