@@ -277,6 +277,63 @@ app.get("/api/pairs/:address", async (c) => {
   }
 });
 
+// Avalanche L1s (subnets/blockchains)
+app.get("/api/l1s", async (c) => {
+  try {
+    const l1s = await defiAPIs.getAvalancheL1s();
+    return c.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      count: l1s.length,
+      l1s,
+    });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch L1s" }, 500);
+  }
+});
+
+// Avalanche DeFi protocols (Avalanche-only, sorted by TVL)
+app.get("/api/avax-defi", async (c) => {
+  try {
+    const protocols = await defiAPIs.getAvalancheDeFiProtocols();
+    return c.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      count: protocols.length,
+      protocols,
+    });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch Avalanche DeFi" }, 500);
+  }
+});
+
+// Top trading pairs on Avalanche DEXs
+app.get("/api/top-pairs", async (c) => {
+  try {
+    const pairs = await defiAPIs.getAvalancheTopPairs();
+    return c.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      count: pairs.length,
+      pairs: pairs.map((p) => ({
+        dex: p.dexId,
+        pair: `${p.baseToken.symbol}/${p.quoteToken.symbol}`,
+        baseToken: p.baseToken,
+        quoteToken: p.quoteToken,
+        priceUsd: p.priceUsd,
+        volume24h: p.volume?.h24,
+        liquidity: p.liquidity?.usd,
+        fdv: p.fdv,
+        pairAddress: p.pairAddress,
+        tradeUrl: `https://dexscreener.com/avalanche/${p.pairAddress}`,
+        traderJoeUrl: `https://traderjoexyz.com/avalanche/trade/${p.baseToken.address}`,
+      })),
+    });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch top pairs" }, 500);
+  }
+});
+
 // ---------- x402 PAID routes (agent-to-agent) ----------
 
 app.use(

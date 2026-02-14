@@ -169,6 +169,25 @@ interface GlacierBlock {
   txCount: number;
 }
 
+interface AvalancheL1 {
+  blockchainId: string;
+  status: string;
+  blockchainName?: string;
+  vmId?: string;
+  subnetId?: string;
+  evmChainId?: number;
+}
+
+interface AvalancheDeFiProtocol {
+  name: string;
+  tvl: number;
+  category: string;
+  change1d?: number;
+  change7d?: number;
+  logo: string;
+  url: string;
+}
+
 interface AvalancheMetrics {
   totalTVL: number;
   protocolCount: number;
@@ -593,6 +612,120 @@ export class DeFiAPIs {
       return tokens;
     } catch (error) {
       console.error("Glacier wallet tokens error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Glacier: Listar todas las L1s (subnets) de Avalanche
+   */
+  async getAvalancheL1s(): Promise<AvalancheL1[]> {
+    const cacheKey = "avalanche-l1s";
+    const cached = this.glacierCache.get(cacheKey) as AvalancheL1[] | null;
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(
+        "https://glacier-api.avax.network/v1/networks/mainnet/blockchains?pageSize=100",
+        { signal: AbortSignal.timeout(15_000) }
+      );
+      if (!response.ok) return [];
+
+      const data = await response.json() as { blockchains?: AvalancheL1[] };
+      const l1s = data.blockchains || [];
+      this.glacierCache.set(cacheKey, l1s);
+      return l1s;
+    } catch (error) {
+      console.error("Glacier L1s error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * DefiLlama: Top protocolos DeFi solo en Avalanche con categorias
+   */
+  async getAvalancheDeFiProtocols(): Promise<AvalancheDeFiProtocol[]> {
+    const cacheKey = "avax-defi-protocols";
+    const cached = this.glacierCache.get(cacheKey) as AvalancheDeFiProtocol[] | null;
+    if (cached) return cached;
+
+    try {
+      const response = await fetch("https://api.llama.fi/protocols", {
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) return [];
+
+      const protocols = await response.json() as DeFiLlamaProtocol[];
+      const excludeCategories = ["CEX", "Chain"];
+      const avaxOnly = protocols
+        .filter((p) => p.chains?.includes("Avalanche") && !excludeCategories.includes(p.category || ""))
+        .sort((a, b) => (b.chainTvls?.["Avalanche"] || b.tvl || 0) - (a.chainTvls?.["Avalanche"] || a.tvl || 0))
+        .slice(0, 50)
+        .map((p) => ({
+          name: p.name,
+          tvl: p.chainTvls?.["Avalanche"] || p.tvl || 0,
+          category: p.category || "Other",
+          change1d: p.change_1d,
+          change7d: p.change_7d,
+          logo: `https://icons.llama.fi/icons/protocols/${p.name.toLowerCase().replace(/\s+/g, "-")}`,
+          url: `https://defillama.com/protocol/${p.name.toLowerCase().replace(/\s+/g, "-")}`,
+        }));
+
+      this.glacierCache.set(cacheKey, avaxOnly);
+      return avaxOnly;
+    } catch (error) {
+      console.error("Avalanche DeFi protocols error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * DEX Screener: Top pares de Avalanche (múltiples tokens principales)
+   */
+  async getAvalancheTopPairs(): Promise<DexPair[]> {
+    const cacheKey = "avax-top-pairs";
+    const cached = this.dexCache.get(cacheKey);
+    if (cached) return cached;
+
+    // Top Avalanche token addresses: WAVAX, USDC, USDT, JOE, sAVAX, BTC.b, WETH.e
+    const topTokens = [
+      "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7", // WAVAX
+      "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", // USDC
+      "0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd", // JOE
+      "0x2b2C81e08f1Af8835a78Bb2A90AE924ACE0eA4bE", // sAVAX
+    ];
+
+    try {
+      const allPairs: DexPair[] = [];
+      const seen = new Set<string>();
+
+      for (const token of topTokens) {
+        try {
+          const response = await fetch(
+            `https://api.dexscreener.com/latest/dex/tokens/${token}`,
+            { signal: AbortSignal.timeout(10_000) }
+          );
+          if (!response.ok) continue;
+
+          const data = await response.json() as DexScreenerResponse;
+          const pairs = (data.pairs || []).filter((p) => p.chainId === "avalanche");
+          for (const p of pairs) {
+            if (!seen.has(p.pairAddress)) {
+              seen.add(p.pairAddress);
+              allPairs.push(p);
+            }
+          }
+        } catch { /* skip failed token */ }
+      }
+
+      const sorted = allPairs
+        .sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0))
+        .slice(0, 30);
+
+      this.dexCache.set(cacheKey, sorted);
+      return sorted;
+    } catch (error) {
+      console.error("DEX Screener top pairs error:", error);
       return [];
     }
   }

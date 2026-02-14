@@ -337,6 +337,51 @@
         .protocol-name { color: var(--t1); font-weight: 600; }
         .protocol-tvl { color: var(--t2); font-family: var(--mono); font-size: 0.7rem; }
         .protocol-cat { color: var(--t3); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* Market tabs */
+        .market-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+        .market-tab {
+            padding: 6px 14px; border-radius: 8px; font-size: 0.68rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;
+            background: var(--glass); border: 1px solid var(--border); color: var(--t2);
+            transition: all 0.2s;
+        }
+        .market-tab.active { background: var(--red-dim); border-color: var(--border-a); color: var(--red); }
+        .market-tab:hover { border-color: var(--border-h); }
+        .market-section { display: none; }
+        .market-section.active { display: block; }
+        /* L1 cards */
+        .l1-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+        .l1-card {
+            background: var(--glass2); border: 1px solid var(--border); border-radius: var(--rs);
+            padding: 12px; transition: all 0.2s; cursor: pointer;
+        }
+        .l1-card:hover { border-color: var(--border-a); transform: translateY(-1px); }
+        .l1-name { font-size: 0.8rem; font-weight: 700; color: var(--t1); margin-bottom: 4px; }
+        .l1-meta { font-size: 0.65rem; color: var(--t3); font-family: var(--mono); }
+        .l1-status { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+        .l1-status.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .l1-status.inactive { background: var(--t3); }
+        /* Pair rows */
+        .pair-row {
+            display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.72rem;
+        }
+        .pair-row:last-child { border-bottom: none; }
+        .pair-name { color: var(--t1); font-weight: 600; }
+        .pair-dex { color: var(--t3); font-size: 0.6rem; text-transform: uppercase; }
+        .pair-price { color: var(--green); font-family: var(--mono); }
+        .pair-vol { color: var(--t2); font-family: var(--mono); font-size: 0.65rem; }
+        .pair-links { display: flex; gap: 4px; }
+        .pair-link {
+            font-size: 0.58rem; padding: 3px 8px; border-radius: 6px; text-decoration: none;
+            background: var(--glass2); border: 1px solid var(--border); color: var(--t2);
+            transition: all 0.2s;
+        }
+        .pair-link:hover { border-color: var(--red); color: var(--red); }
+        .pair-link.tj { border-color: rgba(59,130,246,0.3); color: var(--blue); }
+        .pair-link.tj:hover { background: rgba(59,130,246,0.1); }
+        .change-pos { color: var(--green); }
+        .change-neg { color: var(--red); }
 
         .token-search-box {
             display: flex; gap: 6px; margin-bottom: 10px;
@@ -497,6 +542,7 @@
 
             <!-- MARKET VIEW -->
             <div class="market-view" id="marketView">
+                <!-- AVAX Price + TVL summary -->
                 <div class="market-grid">
                     <div class="market-card">
                         <h3>AVAX Market</h3>
@@ -504,24 +550,71 @@
                         <div class="stat"><span class="stat-k">24h Change</span><span class="stat-v" id="mktAvaxChange">--</span></div>
                     </div>
                     <div class="market-card">
-                        <h3>DeFi Overview</h3>
+                        <h3>Avalanche Ecosystem</h3>
                         <div class="stat"><span class="stat-k">Total TVL</span><span class="stat-v" id="mktTVL">--</span></div>
-                        <div class="stat"><span class="stat-k">Protocols</span><span class="stat-v" id="mktProtocols">--</span></div>
+                        <div class="stat"><span class="stat-k">DeFi Protocols</span><span class="stat-v" id="mktProtocols">--</span></div>
+                        <div class="stat"><span class="stat-k">L1 Chains</span><span class="stat-v" id="mktL1Count">--</span></div>
                     </div>
                 </div>
 
-                <div class="market-card">
-                    <h3>Top Protocols by TVL</h3>
-                    <div id="protocolsList"><span class="loading-small">Loading protocols...</span></div>
+                <!-- Sub-tabs for market sections -->
+                <div class="market-tabs">
+                    <div class="market-tab active" onclick="switchMarketTab(this,'defi')">DeFi Protocols</div>
+                    <div class="market-tab" onclick="switchMarketTab(this,'l1s')">Avalanche L1s</div>
+                    <div class="market-tab" onclick="switchMarketTab(this,'trading')">Trading Pairs</div>
+                    <div class="market-tab" onclick="switchMarketTab(this,'lookup')">Token Lookup</div>
+                    <div class="market-tab" onclick="switchMarketTab(this,'agents')">ERC-8004 Agents</div>
                 </div>
 
-                <div class="market-card">
-                    <h3>Token Lookup</h3>
-                    <div class="token-search-box">
-                        <input type="text" id="tokenAddressInput" placeholder="Enter token address (0x...)" />
-                        <button onclick="searchToken()">Search</button>
+                <!-- DeFi Protocols Section -->
+                <div class="market-section active" id="mktDefi">
+                    <div class="market-card">
+                        <h3>Top Avalanche DeFi Protocols</h3>
+                        <div id="protocolsList"><span class="loading-small">Loading Avalanche protocols...</span></div>
                     </div>
-                    <div id="tokenResult"></div>
+                </div>
+
+                <!-- L1s Section -->
+                <div class="market-section" id="mktL1s">
+                    <div class="market-card">
+                        <h3>Avalanche L1 Blockchains (Subnets)</h3>
+                        <div id="l1sList" class="l1-grid"><span class="loading-small">Loading L1s...</span></div>
+                    </div>
+                </div>
+
+                <!-- Trading Pairs Section -->
+                <div class="market-section" id="mktTrading">
+                    <div class="market-card">
+                        <h3>Top Avalanche Trading Pairs</h3>
+                        <div id="pairsList"><span class="loading-small">Loading pairs...</span></div>
+                    </div>
+                </div>
+
+                <!-- ERC-8004 Agents Section -->
+                <div class="market-section" id="mktAgents">
+                    <div class="market-card">
+                        <h3>ERC-8004 AI Agent Registry</h3>
+                        <div style="margin-bottom:10px;">
+                            <a href="https://erc-8004scan.xyz" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--red-dim);border:1px solid var(--border-a);border-radius:8px;color:var(--red);text-decoration:none;font-size:0.75rem;font-weight:600;transition:all 0.2s;">
+                                Open ERC-8004 Scanner
+                                <span style="font-size:0.9rem;">&#8599;</span>
+                            </a>
+                            <span style="color:var(--t3);font-size:0.65rem;margin-left:8px;">Browse all registered AI agents on Avalanche</span>
+                        </div>
+                        <div id="agentsList"><span class="loading-small">Loading agents from registry...</span></div>
+                    </div>
+                </div>
+
+                <!-- Token Lookup Section -->
+                <div class="market-section" id="mktLookup">
+                    <div class="market-card">
+                        <h3>Token Lookup</h3>
+                        <div class="token-search-box">
+                            <input type="text" id="tokenAddressInput" placeholder="Enter token address (0x...)" />
+                            <button onclick="searchToken()">Search</button>
+                        </div>
+                        <div id="tokenResult"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -594,7 +687,26 @@
             } catch (e) { console.warn('DeFi fetch failed:', e); }
         }
 
+        function switchMarketTab(el, section) {
+            document.querySelectorAll('.market-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.querySelectorAll('.market-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('mkt' + section.charAt(0).toUpperCase() + section.slice(1)).classList.add('active');
+            if (section === 'l1s') loadL1s();
+            if (section === 'trading') loadTradingPairs();
+            if (section === 'defi') loadAvaxProtocols();
+            if (section === 'agents') loadAgentScanner();
+        }
+
+        function fmtTvl(v) {
+            if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+            if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+            if (v >= 1e3) return '$' + (v/1e3).toFixed(2) + 'K';
+            return '$' + v.toFixed(2);
+        }
+
         async function loadMarketData() {
+            // AVAX Price
             try {
                 const res = await fetch(API_BASE + '/api/market');
                 const data = await res.json();
@@ -609,28 +721,153 @@
                 }
             } catch (e) { console.warn('Market fetch failed:', e); }
 
+            // TVL + Protocol count
             try {
                 const res = await fetch(API_BASE + '/api/defi');
                 const data = await res.json();
                 if (data.success) {
                     document.getElementById('mktTVL').textContent = data.totalTVLFormatted;
                     document.getElementById('mktProtocols').textContent = data.protocolCount;
-
-                    const list = document.getElementById('protocolsList');
-                    if (data.topProtocols && data.topProtocols.length > 0) {
-                        list.innerHTML = data.topProtocols.slice(0, 10).map(p =>
-                            '<div class="protocol-row">' +
-                                '<div><span class="protocol-name">' + p.name + '</span>' +
-                                (p.category ? ' <span class="protocol-cat">' + p.category + '</span>' : '') +
-                                '</div>' +
-                                '<span class="protocol-tvl">' + p.tvlFormatted + '</span>' +
-                            '</div>'
-                        ).join('');
-                    } else {
-                        list.innerHTML = '<span class="loading-small">No protocol data available</span>';
-                    }
                 }
             } catch (e) { console.warn('DeFi fetch failed:', e); }
+
+            // L1 count
+            try {
+                const res = await fetch(API_BASE + '/api/l1s');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('mktL1Count').textContent = data.count;
+                }
+            } catch (e) { console.warn('L1s count fetch failed:', e); }
+
+            // Load default tab
+            loadAvaxProtocols();
+        }
+
+        async function loadAvaxProtocols() {
+            const list = document.getElementById('protocolsList');
+            try {
+                const res = await fetch(API_BASE + '/api/avax-defi');
+                const data = await res.json();
+                if (data.success && data.protocols.length > 0) {
+                    list.innerHTML = data.protocols.slice(0, 25).map((p, i) =>
+                        '<div class="protocol-row">' +
+                            '<div>' +
+                                '<span style="color:var(--t3);font-size:0.6rem;margin-right:6px;">' + (i+1) + '</span>' +
+                                '<span class="protocol-name">' + p.name + '</span>' +
+                                ' <span class="protocol-cat">' + p.category + '</span>' +
+                            '</div>' +
+                            '<div style="display:flex;align-items:center;gap:8px;">' +
+                                (p.change1d != null ? '<span class="' + (p.change1d >= 0 ? 'change-pos' : 'change-neg') + '" style="font-size:0.6rem;">' + (p.change1d >= 0 ? '+' : '') + p.change1d.toFixed(1) + '%</span>' : '') +
+                                '<span class="protocol-tvl">' + fmtTvl(p.tvl) + '</span>' +
+                                '<a href="' + p.url + '" target="_blank" class="pair-link" style="font-size:0.55rem;">View</a>' +
+                            '</div>' +
+                        '</div>'
+                    ).join('');
+                } else {
+                    list.innerHTML = '<span class="loading-small">No Avalanche protocol data available</span>';
+                }
+            } catch (e) {
+                list.innerHTML = '<span class="loading-small">Error loading protocols</span>';
+            }
+        }
+
+        async function loadL1s() {
+            const container = document.getElementById('l1sList');
+            if (container.dataset.loaded) return;
+            container.innerHTML = '<span class="loading-small">Loading Avalanche L1s...</span>';
+            try {
+                const res = await fetch(API_BASE + '/api/l1s');
+                const data = await res.json();
+                if (data.success && data.l1s.length > 0) {
+                    container.innerHTML = data.l1s.map(l1 => {
+                        const name = l1.blockchainName || l1.blockchainId.substring(0, 12) + '...';
+                        const isActive = l1.status === 'BLOCKCHAIN_STATUS_VALIDATING';
+                        return '<div class="l1-card" onclick="window.open(\'https://subnets.avax.network/c-chain\',\'_blank\')">' +
+                            '<div class="l1-name"><span class="l1-status ' + (isActive ? 'active' : 'inactive') + '"></span>' + name + '</div>' +
+                            '<div class="l1-meta">' +
+                                (l1.subnetId ? 'Subnet: ' + l1.subnetId.substring(0,10) + '...' : '') +
+                                (l1.evmChainId ? ' | EVM ID: ' + l1.evmChainId : '') +
+                            '</div>' +
+                            '<div class="l1-meta" style="margin-top:2px;">Status: ' + (isActive ? '<span style="color:var(--green)">Active</span>' : l1.status) + '</div>' +
+                        '</div>';
+                    }).join('');
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML = '<span class="loading-small">No L1 data available</span>';
+                }
+            } catch (e) {
+                container.innerHTML = '<span class="loading-small">Error loading L1s</span>';
+            }
+        }
+
+        async function loadTradingPairs() {
+            const container = document.getElementById('pairsList');
+            if (container.dataset.loaded) return;
+            container.innerHTML = '<span class="loading-small">Loading Avalanche trading pairs...</span>';
+            try {
+                const res = await fetch(API_BASE + '/api/top-pairs');
+                const data = await res.json();
+                if (data.success && data.pairs.length > 0) {
+                    container.innerHTML = data.pairs.slice(0, 20).map(p =>
+                        '<div class="pair-row">' +
+                            '<div>' +
+                                '<span class="pair-name">' + p.pair + '</span><br>' +
+                                '<span class="pair-dex">' + p.dex + '</span>' +
+                            '</div>' +
+                            '<span class="pair-price">$' + parseFloat(p.priceUsd).toFixed(6) + '</span>' +
+                            '<span class="pair-vol">' + (p.volume24h ? '$' + p.volume24h.toLocaleString() : '--') + '</span>' +
+                            '<div class="pair-links">' +
+                                '<a href="' + p.tradeUrl + '" target="_blank" class="pair-link">DEX Screener</a>' +
+                                '<a href="' + p.traderJoeUrl + '" target="_blank" class="pair-link tj">Trader Joe</a>' +
+                            '</div>' +
+                        '</div>'
+                    ).join('');
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML = '<span class="loading-small">No trading pairs data</span>';
+                }
+            } catch (e) {
+                container.innerHTML = '<span class="loading-small">Error loading pairs</span>';
+            }
+        }
+
+        async function loadAgentScanner() {
+            const container = document.getElementById('agentsList');
+            if (container.dataset.loaded) return;
+            container.innerHTML = '<span class="loading-small">Loading agents from ERC-8004 registry...</span>';
+            try {
+                const res = await fetch(API_BASE + '/agents/discover');
+                const data = await res.json();
+                if (data.success && data.agentsList && data.agentsList.length > 0) {
+                    container.innerHTML = data.agentsList.map((agent, i) =>
+                        '<div class="l1-card" style="cursor:default;">' +
+                            '<div class="l1-name"><span class="l1-status active"></span>Agent #' + (agent.id || i) + '</div>' +
+                            '<div class="l1-meta">' + (agent.name || 'ERC-8004 Agent') + '</div>' +
+                            (agent.endpoint ? '<div class="l1-meta" style="margin-top:2px;"><a href="' + agent.endpoint + '" target="_blank" style="color:var(--blue);text-decoration:none;">Visit Agent &#8599;</a></div>' : '') +
+                        '</div>'
+                    ).join('');
+                    container.dataset.loaded = 'true';
+                } else {
+                    container.innerHTML =
+                        '<div class="l1-grid">' +
+                            '<div class="l1-card" style="cursor:default;">' +
+                                '<div class="l1-name"><span class="l1-status active"></span>AvaBuilder Agent</div>' +
+                                '<div class="l1-meta">Agent ID: 1686 (Mainnet) | 15 (Fuji)</div>' +
+                                '<div class="l1-meta" style="margin-top:2px;">The first AI builder agent on Avalanche</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="margin-top:8px;font-size:0.65rem;color:var(--t3);">' +
+                            'Visit <a href="https://erc-8004scan.xyz" target="_blank" style="color:var(--red);text-decoration:none;">erc-8004scan.xyz</a> to explore all registered agents' +
+                        '</div>';
+                }
+            } catch (e) {
+                container.innerHTML =
+                    '<div style="text-align:center;padding:16px;">' +
+                        '<div style="font-size:0.75rem;color:var(--t2);margin-bottom:8px;">Explore AI Agents on Avalanche</div>' +
+                        '<a href="https://erc-8004scan.xyz" target="_blank" style="display:inline-block;padding:10px 24px;background:var(--red-dim);border:1px solid var(--border-a);border-radius:8px;color:var(--red);text-decoration:none;font-size:0.75rem;font-weight:600;">Open ERC-8004 Scanner &#8599;</a>' +
+                    '</div>';
+            }
         }
 
         async function searchToken() {
