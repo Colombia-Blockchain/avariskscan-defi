@@ -370,6 +370,47 @@ app.get("/api/top-pairs", async (c) => {
   }
 });
 
+// ---------- FREE Knowledge & Builder routes ----------
+
+// Ecosystem overview
+app.get("/api/ecosystem", (c) => {
+  const overview = guide.getEcosystemOverview();
+  return c.json({ success: true, timestamp: new Date().toISOString(), ...overview });
+});
+
+// Available knowledge topics
+app.get("/api/topics", (c) => {
+  const topics = guide.getTopics();
+  return c.json({ success: true, timestamp: new Date().toISOString(), count: topics.length, topics });
+});
+
+// Build templates
+app.get("/api/templates", (c) => {
+  const category = c.req.query("category");
+  const templates = guide.getTemplates(category);
+  return c.json({ success: true, timestamp: new Date().toISOString(), count: templates.length, templates });
+});
+
+// Specific build template
+app.get("/api/templates/:id", (c) => {
+  const template = guide.getTemplate(c.req.param("id"));
+  if (!template) return c.json({ success: false, error: "Template not found" }, 404);
+  return c.json({ success: true, timestamp: new Date().toISOString(), template });
+});
+
+// Learning paths
+app.get("/api/learning", (c) => {
+  const paths = guide.getLearningPaths();
+  return c.json({ success: true, timestamp: new Date().toISOString(), count: paths.length, paths });
+});
+
+// Specific learning path
+app.get("/api/learning/:id", (c) => {
+  const path = guide.getLearningPath(c.req.param("id"));
+  if (!path) return c.json({ success: false, error: "Learning path not found" }, 404);
+  return c.json({ success: true, timestamp: new Date().toISOString(), path });
+});
+
 // ---------- MCP Server (Model Context Protocol) ----------
 
 const MCP_TOOLS = [
@@ -405,6 +446,30 @@ const MCP_TOOLS = [
   {
     name: "get_avalanche_l1s",
     description: "Get all Avalanche L1 blockchains (subnets) from Glacier API",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "get_ecosystem_overview",
+    description: "Get Avalanche ecosystem overview: chains, consensus, tools, key features, and links",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "get_build_templates",
+    description: "Get step-by-step build templates for Avalanche (L1, ERC-20, DEX, bridge, gaming, RWA, x402 agent)",
+    inputSchema: {
+      type: "object",
+      properties: { category: { type: "string", description: "Optional filter: l1, defi, cross-chain, token, gaming, rwa, agent" } },
+      required: [],
+    },
+  },
+  {
+    name: "get_learning_paths",
+    description: "Get structured learning paths for Avalanche development (Zero to L1, DeFi Builder, Full-Stack Web3)",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "get_topics",
+    description: "List all available Avalanche knowledge topics the agent can answer questions about",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
 ];
@@ -472,6 +537,24 @@ app.post("/mcp", async (c) => {
         case "get_avalanche_l1s": {
           const subnets = await defiAPIs.getAvalancheL1s();
           result = { count: subnets.length, l1s: subnets.slice(0, 50).map((s) => ({ subnetId: s.subnetId, isL1: s.isL1, name: s.blockchains?.[0]?.blockchainName || "Unknown" })) };
+          break;
+        }
+        case "get_ecosystem_overview": {
+          result = guide.getEcosystemOverview();
+          break;
+        }
+        case "get_build_templates": {
+          const templates = guide.getTemplates(args.category);
+          result = { count: templates.length, templates: templates.map((t) => ({ id: t.id, name: t.name, category: t.category, difficulty: t.difficulty, description: t.description, steps: t.steps })) };
+          break;
+        }
+        case "get_learning_paths": {
+          const paths = guide.getLearningPaths();
+          result = { count: paths.length, paths: paths.map((p) => ({ id: p.id, name: p.name, description: p.description, modules: p.modules })) };
+          break;
+        }
+        case "get_topics": {
+          result = guide.getTopics();
           break;
         }
         default:
@@ -561,8 +644,14 @@ serve({ fetch: app.fetch, port }, (info) => {
   console.log(`  GET /api/top-pairs                     Top Avalanche trading pairs`);
   console.log(`  GET /api/token/:address                Token info (DEX + CoinGecko)`);
   console.log(`  GET /api/pairs/:address                Trading pairs`);
+  console.log(`  GET /api/ecosystem                     Avalanche ecosystem overview`);
+  console.log(`  GET /api/topics                        Knowledge topics`);
+  console.log(`  GET /api/templates                     Build templates`);
+  console.log(`  GET /api/templates/:id                 Specific template`);
+  console.log(`  GET /api/learning                      Learning paths`);
+  console.log(`  GET /api/learning/:id                  Specific learning path`);
   console.log(`  GET /public/:filename                  Static files`);
-  console.log(`  POST /mcp                              MCP server (6 tools)`);
+  console.log(`  POST /mcp                              MCP server (10 tools)`);
   console.log(`\n  PAID (x402 Agent-to-Agent):`);
   console.log(`  POST /a2a/guide  [$0.01 USDC]          AI builder guide\n`);
 });
