@@ -22,6 +22,14 @@ const PAIR_ABI = [
   "function totalSupply() view returns (uint256)",
 ];
 
+// Trader Joe V2 Liquidity Book ABI
+const TRADERJOE_V2_ABI = [
+  "function getTokenX() view returns (address)",
+  "function getTokenY() view returns (address)",
+  "function getReservesAndId() view returns (uint256 reserveX, uint256 reserveY, uint256 activeId)",
+  "function totalSupply() view returns (uint256)",
+];
+
 export interface RiskAnalysisRequest {
   type: "contract" | "token" | "pool" | "protocol";
   address: string;
@@ -191,7 +199,7 @@ export class DeFiRiskAnalyzer {
   }
 
   /**
-   * Análisis de pool de liquidez (Uniswap V2 style)
+   * Análisis de pool de liquidez (Uniswap V2 style + Trader Joe V2)
    */
   private async analyzePool(address: string, dex?: string, network: "mainnet" | "fuji" = "mainnet"): Promise<RiskAnalysisResult> {
     const findings: string[] = [];
@@ -202,15 +210,58 @@ export class DeFiRiskAnalyzer {
       const networkInfo = await provider.getNetwork();
       findings.push(`🌐 Red: ${network === "fuji" ? "Avalanche Fuji Testnet" : "Avalanche Mainnet"} (chainId: ${networkInfo.chainId})`);
 
-      const pair = new ethers.Contract(address, PAIR_ABI, provider);
+      let token0Addr: string;
+      let token1Addr: string;
+      let reserves: any;
+      let totalSupply: bigint;
+      let isTraderJoeV2 = false;
 
-      // Obtener tokens del pool
-      const [token0Addr, token1Addr, reserves, totalSupply] = await Promise.all([
-        pair.token0(),
-        pair.token1(),
-        pair.getReserves(),
-        pair.totalSupply(),
-      ]);
+      // Intentar con Trader Joe V2 primero si el DEX es traderjoe
+      if (dex?.toLowerCase() === "traderjoe") {
+        try {
+          const pairV2 = new ethers.Contract(address, TRADERJOE_V2_ABI, provider);
+          const [tokenX, tokenY, reservesAndId, supply] = await Promise.all([
+            pairV2.getTokenX(),
+            pairV2.getTokenY(),
+            pairV2.getReservesAndId(),
+            pairV2.totalSupply(),
+          ]);
+          token0Addr = tokenX;
+          token1Addr = tokenY;
+          reserves = [reservesAndId[0], reservesAndId[1]]; // reserveX, reserveY
+          totalSupply = supply;
+          isTraderJoeV2 = true;
+          findings.push(`Pool Type: Trader Joe V2 Liquidity Book ✓`);
+        } catch (v2Error) {
+          // Si falla V2, intentar con Uniswap V2 estándar
+          const pair = new ethers.Contract(address, PAIR_ABI, provider);
+          const [t0, t1, res, supply] = await Promise.all([
+            pair.token0(),
+            pair.token1(),
+            pair.getReserves(),
+            pair.totalSupply(),
+          ]);
+          token0Addr = t0;
+          token1Addr = t1;
+          reserves = res;
+          totalSupply = supply;
+          findings.push(`Pool Type: Uniswap V2 Compatible`);
+        }
+      } else {
+        // Para otros DEX, usar ABI estándar de Uniswap V2
+        const pair = new ethers.Contract(address, PAIR_ABI, provider);
+        const [t0, t1, res, supply] = await Promise.all([
+          pair.token0(),
+          pair.token1(),
+          pair.getReserves(),
+          pair.totalSupply(),
+        ]);
+        token0Addr = t0;
+        token1Addr = t1;
+        reserves = res;
+        totalSupply = supply;
+        findings.push(`Pool Type: Uniswap V2 Compatible`);
+      }
 
       findings.push(`Pool en ${dex || "DEX desconocido"}`);
       findings.push(`Token0: ${token0Addr}`);
