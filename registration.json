@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "AvaBuilder Agent",
-  "description": "The first AI builder agent on Avalanche. Guides developers from zero to deploying L1 blockchains, smart contracts, DeFi protocols, games, RWA, bridges, and any project on the Avalanche ecosystem. Powered by 128K+ lines of official documentation. ERC-8004 registered, x402 enabled.",
+  "description": "AvaBuilder is an autonomous AI agent purpose-built for the Avalanche ecosystem. It provides real-time DeFi analytics (TVL, protocols, trading pairs via DeFiLlama, CoinGecko, and DEX Screener), full visibility into 500+ active L1 blockchains via Glacier API, and an AI-powered builder guide trained on 128K+ lines of official Avalanche documentation. The agent supports three interoperability protocols: A2A (agent-to-agent communication), MCP (Model Context Protocol with 6 callable tools), and x402 (micropayment-gated endpoints via USDC on Avalanche). Capabilities include L1 blockchain creation, validator node setup, smart contract deployment (ERC-20, ERC-721, ERC-1155), DeFi protocol architecture, cross-chain bridge design (Avalanche Warp Messaging, CCIP, LayerZero), RWA tokenization, gaming chain infrastructure, and full SDK guidance (AvalancheJS, HyperSDK, Teleporter). Registered on-chain under ERC-8004 standard on both Avalanche Mainnet (Agent #1686) and Fuji Testnet (Agent #15). Created by Cyber Paisa.",
   "image": "https://avariskscan-defi-production.up.railway.app/public/avabuilder-agent.png",
   "services": [
     {
