@@ -43,6 +43,18 @@ app.get("/.well-known/agent-card.json", (c) => {
   });
 });
 
+// Domain verification for ERC-8004 scanners
+app.get("/.well-known/agent-registration.json", (c) => {
+  try {
+    const verificationJSON = readFileSync(join(__dirname, "..", ".well-known", "agent-registration.json"), "utf-8");
+    return c.json(JSON.parse(verificationJSON), 200, {
+      "Content-Type": "application/json",
+    });
+  } catch (error) {
+    return c.json({ error: "Verification file not found" }, 404);
+  }
+});
+
 // Registration JSON para hospedar como agentURI
 app.get("/registration.json", (c) => {
   return c.json(registration, 200, {
