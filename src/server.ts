@@ -30,7 +30,7 @@ const defiAPIs = new DeFiAPIs();
 app.get("/", (c) => {
   return c.json({
     status: "ok",
-    agent: "AvaRisk DeFi",
+    agent: "Cyber_paisa_Defi",
     version: "0.1.0",
     x402: true,
   });
@@ -254,7 +254,7 @@ app.post("/a2a/research", async (c) => {
 
     return c.json({
       success: true,
-      agent: "AvaRisk DeFi",
+      agent: "Cyber_paisa_Defi",
       timestamp: new Date().toISOString(),
       request: { type, address, network, dex },
       result,
@@ -298,7 +298,7 @@ app.post("/defi/analyze", async (c) => {
 
     return c.json({
       success: true,
-      agent: "AvaRisk DeFi",
+      agent: "Cyber_paisa_Defi",
       timestamp: new Date().toISOString(),
       request: { type, address, network, dex },
       result,
