@@ -602,15 +602,14 @@
 
                 <!-- L1s Section -->
                 <div class="market-section" id="mktL1s">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <div>
-                            <span style="font-size:0.85rem;font-weight:700;color:var(--t1);">Avalanche L1 Blockchains</span>
-                            <span id="l1Total" style="font-size:0.6rem;color:var(--t3);margin-left:8px;"></span>
-                        </div>
-                        <a href="https://subnets.avax.network/subnets/" target="_blank" style="font-size:0.6rem;padding:4px 10px;border-radius:6px;background:var(--glass2);border:1px solid var(--border);color:var(--t2);text-decoration:none;transition:all 0.2s;">Avalanche Explorer &#8599;</a>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <span style="font-size:0.85rem;font-weight:700;color:var(--t1);">Avalanche L1 Blockchains</span>
+                        <a href="https://subnets.avax.network/subnets/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--red-dim);border:1px solid var(--border-a);border-radius:6px;color:var(--red);text-decoration:none;font-size:0.6rem;font-weight:600;">
+                            Open in new tab &#8599;
+                        </a>
                     </div>
-                    <div id="l1sList" class="l1-grid">
-                        <span class="loading-small" style="padding:16px;grid-column:1/-1;">Loading L1s from Glacier API...</span>
+                    <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--glass);">
+                        <iframe src="https://subnets.avax.network/subnets/" style="width:100%;height:calc(100vh - 260px);min-height:500px;border:none;background:#0a0a0f;" loading="lazy" allow="clipboard-write"></iframe>
                     </div>
                 </div>
 
@@ -791,50 +790,8 @@
             }
         }
 
-        async function loadL1s() {
-            const container = document.getElementById('l1sList');
-            if (container.dataset.loaded) return;
-            container.innerHTML = '<span class="loading-small" style="padding:16px;grid-column:1/-1;">Loading L1s from Glacier API...</span>';
-            try {
-                const res = await fetch(API_BASE + '/api/l1s');
-                const data = await res.json();
-                if (data.success && data.l1s.length > 0) {
-                    document.getElementById('l1Total').textContent = data.count + ' chains';
-                    container.innerHTML = data.l1s.map((l1) => {
-                        const initial = (l1.name || '?')[0].toUpperCase();
-                        const typeClass = l1.isL1 ? 'l1' : 'subnet';
-                        const typeLabel = l1.isL1 ? 'L1 Chain' : 'Subnet';
-                        const date = l1.createdAt ? new Date(l1.createdAt).toLocaleDateString('en', {month:'short', day:'numeric', year:'numeric'}) : '--';
-                        return '<div class="l1-card" onclick="window.open(\'' + l1.explorerUrl + '\',\'_blank\')">' +
-                            '<div class="l1-card-top">' +
-                                '<div class="l1-icon ' + (l1.isL1 ? 'is-l1' : '') + '">' + initial + '</div>' +
-                                '<div class="l1-title">' +
-                                    '<span class="l1-name">' + l1.name + '</span>' +
-                                    '<span class="l1-type ' + typeClass + '">' +
-                                        '<span style="width:5px;height:5px;border-radius:50%;background:' + (l1.isL1 ? 'var(--red)' : 'var(--blue)') + ';"></span>' +
-                                        typeLabel +
-                                    '</span>' +
-                                '</div>' +
-                            '</div>' +
-                            '<div class="l1-stats">' +
-                                '<div class="l1-stat"><span class="l1-stat-label">Chain ID</span><span class="l1-stat-val chain-id">' + (l1.evmChainId || 'N/A') + '</span></div>' +
-                                '<div class="l1-stat"><span class="l1-stat-label">Blockchains</span><span class="l1-stat-val">' + l1.chainsCount + '</span></div>' +
-                                '<div class="l1-stat"><span class="l1-stat-label">Subnet</span><span class="l1-stat-val">' + l1.subnetId.substring(0,8) + '...</span></div>' +
-                                (l1.hasValidatorManager ? '<div class="l1-stat"><span class="l1-stat-label">Validators</span><span class="l1-stat-val" style="color:var(--green);">Managed</span></div>' : '<div class="l1-stat"><span class="l1-stat-label">Validators</span><span class="l1-stat-val">Standard</span></div>') +
-                            '</div>' +
-                            '<div class="l1-footer">' +
-                                '<span class="l1-date">' + date + '</span>' +
-                                '<span class="l1-explore">Explore &#8599;</span>' +
-                            '</div>' +
-                        '</div>';
-                    }).join('');
-                    container.dataset.loaded = 'true';
-                } else {
-                    container.innerHTML = '<span class="loading-small" style="padding:16px;grid-column:1/-1;">No L1 data available</span>';
-                }
-            } catch (e) {
-                container.innerHTML = '<span class="loading-small" style="padding:16px;grid-column:1/-1;">Error loading L1s</span>';
-            }
+        function loadL1s() {
+            // L1s are embedded as iframe from subnets.avax.network - no additional loading needed
         }
 
         async function loadTradingPairs() {
