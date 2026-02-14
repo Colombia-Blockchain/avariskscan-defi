@@ -349,18 +349,41 @@
         .market-tab:hover { border-color: var(--border-h); }
         .market-section { display: none; }
         .market-section.active { display: block; }
-        /* L1 cards */
-        .l1-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
-        .l1-card {
-            background: var(--glass2); border: 1px solid var(--border); border-radius: var(--rs);
-            padding: 12px; transition: all 0.2s; cursor: pointer;
+        /* L1 table */
+        .l1-grid { display: flex; flex-direction: column; gap: 0; }
+        .l1-header {
+            display: grid; grid-template-columns: 40px 1fr 100px 120px 80px;
+            gap: 8px; padding: 8px 12px; font-size: 0.6rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px; color: var(--t3);
+            border-bottom: 1px solid var(--border);
         }
-        .l1-card:hover { border-color: var(--border-a); transform: translateY(-1px); }
-        .l1-name { font-size: 0.8rem; font-weight: 700; color: var(--t1); margin-bottom: 4px; }
-        .l1-meta { font-size: 0.65rem; color: var(--t3); font-family: var(--mono); }
-        .l1-status { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
-        .l1-status.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
-        .l1-status.inactive { background: var(--t3); }
+        .l1-card {
+            display: grid; grid-template-columns: 40px 1fr 100px 120px 80px;
+            gap: 8px; padding: 10px 12px; align-items: center;
+            background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: all 0.2s; cursor: pointer;
+        }
+        .l1-card:hover { background: var(--glass2); }
+        .l1-rank { font-size: 0.65rem; color: var(--t3); text-align: center; }
+        .l1-info { display: flex; flex-direction: column; gap: 2px; }
+        .l1-name { font-size: 0.78rem; font-weight: 700; color: var(--t1); }
+        .l1-subnet { font-size: 0.58rem; color: var(--t3); font-family: var(--mono); }
+        .l1-chain-id { font-size: 0.7rem; color: var(--cyan); font-family: var(--mono); }
+        .l1-vm { font-size: 0.6rem; color: var(--t3); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; }
+        .l1-status-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 0.6rem; padding: 3px 8px; border-radius: 10px;
+        }
+        .l1-status-badge.active { background: rgba(16,185,129,0.1); color: var(--green); }
+        .l1-status-badge.other { background: var(--glass); color: var(--t3); }
+        .l1-dot { width: 5px; height: 5px; border-radius: 50%; }
+        .l1-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .l1-dot.other { background: var(--t3); }
+        @media (max-width: 700px) {
+            .l1-header, .l1-card { grid-template-columns: 30px 1fr 80px; }
+            .l1-header > :nth-child(4), .l1-header > :nth-child(5),
+            .l1-card > :nth-child(4), .l1-card > :nth-child(5) { display: none; }
+        }
         /* Pair rows */
         .pair-row {
             display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center;
@@ -577,8 +600,17 @@
                 <!-- L1s Section -->
                 <div class="market-section" id="mktL1s">
                     <div class="market-card">
-                        <h3>Avalanche L1 Blockchains (Subnets)</h3>
-                        <div id="l1sList" class="l1-grid"><span class="loading-small">Loading L1s...</span></div>
+                        <h3>Avalanche L1 Blockchains</h3>
+                        <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+                            <a href="https://subnets.avax.network/subnets/" target="_blank" style="font-size:0.65rem;color:var(--blue);text-decoration:none;">View on Avalanche Explorer &#8599;</a>
+                            <span id="l1Total" style="font-size:0.6rem;color:var(--t3);"></span>
+                        </div>
+                        <div id="l1sList" class="l1-grid">
+                            <div class="l1-header">
+                                <span>#</span><span>Blockchain</span><span>Chain ID</span><span>VM</span><span>Status</span>
+                            </div>
+                            <div id="l1Rows"><span class="loading-small" style="padding:16px;">Loading L1s from Glacier API...</span></div>
+                        </div>
                     </div>
                 </div>
 
@@ -773,31 +805,36 @@
         }
 
         async function loadL1s() {
-            const container = document.getElementById('l1sList');
+            const container = document.getElementById('l1Rows');
             if (container.dataset.loaded) return;
-            container.innerHTML = '<span class="loading-small">Loading Avalanche L1s...</span>';
+            container.innerHTML = '<span class="loading-small" style="padding:16px;">Loading L1s from Glacier API...</span>';
             try {
                 const res = await fetch(API_BASE + '/api/l1s');
                 const data = await res.json();
                 if (data.success && data.l1s.length > 0) {
-                    container.innerHTML = data.l1s.map(l1 => {
-                        const name = l1.blockchainName || l1.blockchainId.substring(0, 12) + '...';
-                        const isActive = l1.status === 'BLOCKCHAIN_STATUS_VALIDATING';
-                        return '<div class="l1-card" onclick="window.open(\'https://subnets.avax.network/c-chain\',\'_blank\')">' +
-                            '<div class="l1-name"><span class="l1-status ' + (isActive ? 'active' : 'inactive') + '"></span>' + name + '</div>' +
-                            '<div class="l1-meta">' +
-                                (l1.subnetId ? 'Subnet: ' + l1.subnetId.substring(0,10) + '...' : '') +
-                                (l1.evmChainId ? ' | EVM ID: ' + l1.evmChainId : '') +
+                    document.getElementById('l1Total').textContent = data.count + ' blockchains';
+                    const vmShort = (vm) => vm ? vm.substring(0, 8) + '...' : '--';
+                    container.innerHTML = data.l1s.map((l1, i) => {
+                        const name = l1.blockchainName || l1.blockchainId.substring(0, 16) + '...';
+                        const subId = l1.subnetId ? l1.subnetId.substring(0, 10) + '...' : '--';
+                        const explorerUrl = 'https://subnets.avax.network/subnets/';
+                        return '<div class="l1-card" onclick="window.open(\'' + explorerUrl + '\',\'_blank\')">' +
+                            '<span class="l1-rank">' + (i + 1) + '</span>' +
+                            '<div class="l1-info">' +
+                                '<span class="l1-name">' + name + '</span>' +
+                                '<span class="l1-subnet">Subnet: ' + subId + '</span>' +
                             '</div>' +
-                            '<div class="l1-meta" style="margin-top:2px;">Status: ' + (isActive ? '<span style="color:var(--green)">Active</span>' : l1.status) + '</div>' +
+                            '<span class="l1-chain-id">' + (l1.evmChainId || '--') + '</span>' +
+                            '<span class="l1-vm">' + vmShort(l1.vmId) + '</span>' +
+                            '<span class="l1-status-badge active"><span class="l1-dot active"></span>Active</span>' +
                         '</div>';
                     }).join('');
                     container.dataset.loaded = 'true';
                 } else {
-                    container.innerHTML = '<span class="loading-small">No L1 data available</span>';
+                    container.innerHTML = '<span class="loading-small" style="padding:16px;">No L1 data available</span>';
                 }
             } catch (e) {
-                container.innerHTML = '<span class="loading-small">Error loading L1s</span>';
+                container.innerHTML = '<span class="loading-small" style="padding:16px;">Error loading L1s</span>';
             }
         }
 
