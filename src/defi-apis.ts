@@ -178,6 +178,24 @@ interface AvalancheL1 {
   evmChainId?: number;
 }
 
+interface AvalancheSubnet {
+  subnetId: string;
+  isL1: boolean;
+  createBlockTimestamp: number;
+  blockchains: {
+    blockchainId: string;
+    blockchainName: string;
+    vmId: string;
+    subnetId: string;
+    evmChainId?: number;
+    createBlockTimestamp: number;
+  }[];
+  l1ValidatorManagerDetails?: {
+    blockchainId: string;
+    contractAddress: string;
+  };
+}
+
 interface AvalancheDeFiProtocol {
   name: string;
   tvl: number;
@@ -617,26 +635,26 @@ export class DeFiAPIs {
   }
 
   /**
-   * Glacier: Listar todas las L1s (subnets) de Avalanche
+   * Glacier: Listar todas las L1s (subnets) de Avalanche con sus blockchains
    */
-  async getAvalancheL1s(): Promise<AvalancheL1[]> {
-    const cacheKey = "avalanche-l1s";
-    const cached = this.glacierCache.get(cacheKey) as AvalancheL1[] | null;
+  async getAvalancheL1s(): Promise<AvalancheSubnet[]> {
+    const cacheKey = "avalanche-subnets";
+    const cached = this.glacierCache.get(cacheKey) as AvalancheSubnet[] | null;
     if (cached) return cached;
 
     try {
       const response = await fetch(
-        "https://glacier-api.avax.network/v1/networks/mainnet/blockchains?pageSize=100",
+        "https://glacier-api.avax.network/v1/networks/mainnet/subnets?pageSize=100&sortOrder=desc",
         { signal: AbortSignal.timeout(15_000) }
       );
       if (!response.ok) return [];
 
-      const data = await response.json() as { blockchains?: AvalancheL1[] };
-      const l1s = data.blockchains || [];
-      this.glacierCache.set(cacheKey, l1s);
-      return l1s;
+      const data = await response.json() as { subnets?: AvalancheSubnet[] };
+      const subnets = (data.subnets || []).filter(s => s.blockchains && s.blockchains.length > 0);
+      this.glacierCache.set(cacheKey, subnets);
+      return subnets;
     } catch (error) {
-      console.error("Glacier L1s error:", error);
+      console.error("Glacier subnets error:", error);
       return [];
     }
   }
